@@ -4,6 +4,13 @@ Real-time voice health intake built for the NSOffice.AI internship assignment. A
 
 **Why this idea:** tool calling during a live voice session is a clear demo of what Gemini Live is good at, beyond a plain chatbot. The handoff note is the client-facing artifact.
 
+## Links
+
+- **Live demo:** [https://health-intake-eta.vercel.app](https://health-intake-eta.vercel.app)
+- **GitHub:** [https://github.com/notharsh411/live-health-intake](https://github.com/notharsh411/live-health-intake)
+
+> Set `GEMINI_API_KEY` in the [Vercel project environment variables](https://vercel.com/harshbhatia618-gmailcoms-projects/health-intake/settings/environment-variables) so the live voice session can mint ephemeral tokens. Without it, the UI still loads but intake sessions fail.
+
 ## Features
 
 - Live audio conversation with `gemini-3.1-flash-live-preview` (listen, speak, barge-in)
