@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Live Health Intake Assistant
 
-## Getting Started
+Real-time voice health intake built for the NSOffice.AI internship assignment. A patient describes symptoms out loud; Gemini Live asks focused follow-ups and updates a structured clinician summary via tool calling mid-conversation.
 
-First, run the development server:
+**Why this idea:** tool calling during a live voice session is a clear demo of what Gemini Live is good at, beyond a plain chatbot. The handoff note is the client-facing artifact.
+
+## Features
+
+- Live audio conversation with `gemini-3.1-flash-live-preview` (listen, speak, barge-in)
+- `update_intake_summary` tool calls fill the summary panel while the patient talks
+- Optional clinician note polish with `gemini-3-flash-preview`
+- NSOffice Glass UI: Electric Blue, DM Sans, aurora + liquid glass Decision Bar
+- API key stays on the server; the browser receives a short-lived ephemeral token
+
+## Stack
+
+- Next.js (App Router) + TypeScript
+- `@google/genai` Live API + Auth Tokens
+- AudioWorklet PCM capture (16 kHz in) / playback (24 kHz out)
+- NSOffice Glass UI kit (`tokens.css`, `liquid-glass.js`)
+
+## Prerequisites
+
+- Node.js 20+
+- A [Google AI Studio](https://aistudio.google.com/apikey) API key (free tier; no billing required)
+- Microphone permission in the browser
+- Chrome recommended for full liquid-glass refraction (Safari/Firefox get a frosted fallback)
+
+## Setup
 
 ```bash
+cd health-intake
+cp .env.example .env.local
+# Edit .env.local and set GEMINI_API_KEY
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `GEMINI_API_KEY` | Yes | | Google AI Studio API key (server only) |
+| `GEMINI_LIVE_MODEL` | No | `gemini-3.1-flash-live-preview` | Live API model |
+| `GEMINI_TEXT_MODEL` | No | `gemini-3-flash-preview` | Turn-based model for clinician note export |
+| `GEMINI_LIVE_VOICE` | No | `Aoede` | Prebuilt Live voice name |
 
-## Learn More
+Never commit `.env` or `.env.local`. Both are covered by `.gitignore`.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run dev      # local development
+npm run build    # production build
+npm run start    # serve production build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How it works
+
+1. **Landing:** hero with aurora mesh and glass Decision Bar; primary action starts intake.
+2. **Intake:** browser requests `POST /api/live-token`, connects to Gemini Live with the ephemeral token, streams mic PCM, plays model audio, and applies `update_intake_summary` / `complete_intake` tool calls to React state.
+3. **Handoff:** structured fields plus an optional polished note from `POST /api/summary/export`; copy or download JSON.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push this repo to GitHub.
+2. Import the project in Vercel (root directory: `health-intake` if the repo parent contains other folders, or the repo root if this folder is the repo).
+3. Add `GEMINI_API_KEY` (and optional model overrides) in Project Settings → Environment Variables.
+4. Deploy. The live URL needs HTTPS for microphone access.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Disclaimer
+
+Demo only. Not medical advice, diagnosis, or treatment. For emergencies, call your local emergency number.
+
+## License
+
+App code is part of the NSOffice internship submission. `liquid-glass.js` is MIT (see `public/liquid-glass.LICENSE`).
