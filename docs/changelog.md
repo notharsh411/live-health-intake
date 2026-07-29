@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-29 (camera-off honesty)
+
+- Default vision state is OFF; model told it cannot see the patient (audio only)
+- Live SYSTEM STATE updates on preview / streaming / stop so “can you see me?” stays truthful
+
 ## 2026-07-29 (vision hallucination guard)
 
 - Removed vision-priming realtime text that caused false “I see a rash” turns

@@ -212,7 +212,29 @@ export function useLiveIntake(onComplete?: () => void) {
     [persistState, pushRecording]
   );
 
+  const notifyVisionState = useCallback(
+    (state: "off" | "preview" | "streaming") => {
+      const session = sessionRef.current;
+      if (!session || !conversationStartedRef.current) return;
+
+      const text =
+        state === "off"
+          ? "SYSTEM STATE: Camera is OFF. You cannot see the patient. You only hear audio. If they ask whether you can see them, say you cannot — only hear them."
+          : state === "preview"
+            ? "SYSTEM STATE: Patient opened a local camera preview only. Frames are NOT sent to you. You still cannot see them. If asked, say you cannot see them yet."
+            : "SYSTEM STATE: Camera frames may start arriving after they aim. Do not invent what you see. Only acknowledge vision if a frame is actually clear. Never claim you see them clearly without a clear image.";
+
+      try {
+        session.sendRealtimeInput({ text });
+      } catch {
+        // Non-fatal.
+      }
+    },
+    []
+  );
+
   const stopCamera = useCallback(() => {
+    const wasOn = Boolean(videoStreamRef.current) || framesStreamingRef.current;
     if (videoTimerRef.current) {
       window.clearInterval(videoTimerRef.current);
       videoTimerRef.current = null;
@@ -228,7 +250,8 @@ export function useLiveIntake(onComplete?: () => void) {
       videoElRef.current.srcObject = null;
     }
     setCameraEnabled(false);
-  }, []);
+    if (wasOn) notifyVisionState("off");
+  }, [notifyVisionState]);
 
   const attachVideoStream = useCallback(async (stream: MediaStream) => {
     if (videoStreamRef.current) {
@@ -433,6 +456,7 @@ export function useLiveIntake(onComplete?: () => void) {
         "system",
         "Camera preview on. Frames are not shared yet — aim at the item, then tap “I’m showing it now”."
       );
+      notifyVisionState("preview");
       // Timer may run, but framesStreamingRef stays false until armed.
       ensureFrameTimer();
     } catch (error) {
@@ -443,21 +467,32 @@ export function useLiveIntake(onComplete?: () => void) {
       );
       setCameraPromptOpen(false);
     }
-  }, [appendTranscript, attachVideoStream, ensureFrameTimer, requestCameraStream]);
+  }, [
+    appendTranscript,
+    attachVideoStream,
+    ensureFrameTimer,
+    notifyVisionState,
+    requestCameraStream,
+  ]);
 
   const beginFrameStreaming = useCallback(() => {
     if (!cameraEnabled || !videoStreamRef.current) return;
     framesStreamingRef.current = true;
     setFramesStreaming(true);
-    // Aim grace: do not send frames (or vision-priming text) immediately.
+    // Aim grace: do not send frames immediately.
     frameArmedAtRef.current = Date.now() + FRAME_AIM_GRACE_MS;
     ensureFrameTimer();
     appendTranscript(
       "system",
       "Sharing will start in a couple of seconds. Hold the label, skin area, or document steady and fill the frame."
     );
-    // Intentionally no sendRealtimeInput text — that was priming false “I see a rash” turns.
-  }, [appendTranscript, cameraEnabled, ensureFrameTimer]);
+    notifyVisionState("streaming");
+  }, [
+    appendTranscript,
+    cameraEnabled,
+    ensureFrameTimer,
+    notifyVisionState,
+  ]);
 
   const switchCamera = useCallback(async () => {
     if (!cameraEnabled) return;
@@ -658,7 +693,7 @@ export function useLiveIntake(onComplete?: () => void) {
             role: "user",
             parts: [
               {
-                text: "I am ready. Please greet me briefly and ask what brought me in today. Keep this as a live conversation until the intake is complete.",
+                text: "I am ready. Please greet me briefly and ask what brought me in today. Keep this as a live conversation until the intake is complete. SYSTEM STATE: Camera is OFF. You cannot see me — only hear me. If I ask whether you can see me, say you cannot.",
               },
             ],
           },
@@ -667,6 +702,13 @@ export function useLiveIntake(onComplete?: () => void) {
       });
     } catch {
       // Some Live builds accept realtime text instead; audio path still works.
+      try {
+        session.sendRealtimeInput({
+          text: "SYSTEM STATE: Camera is OFF. You cannot see the patient. Only audio.",
+        });
+      } catch {
+        // Non-fatal.
+      }
     }
 
     appendTranscript(
