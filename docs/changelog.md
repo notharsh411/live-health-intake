@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 (scroll motion)
+
+- NSOffice.AI-style scroll reveals for text and objects (`Reveal` / `RevealText`)
+- Variants: up, left, right, scale, fade; staggered children; `prefers-reduced-motion` safe
+- Applied on homepage V2, V1 how-it-works, and handoff
+
 ## 2026-07-29 (PDF handoff)
 
 - Branded PDF report on `/handoff` (Electric Blue header, triage badge, clinician note, structured fields, disclaimer)

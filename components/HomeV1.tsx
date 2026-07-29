@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandHeader } from "@/components/BrandHeader";
 import { LiquidGlass } from "@/components/LiquidGlass";
+import { Reveal, RevealText } from "@/components/ScrollReveal";
 
 const DECISION_BAR_GLASS = { scale: -80, chroma: 4, blur: 4 };
 
@@ -57,9 +58,11 @@ export function HomeV1() {
       </section>
 
       <section className="section" id="how-it-works">
-        <h2>What happens in the session</h2>
+        <RevealText as="h2" delay={40}>
+          What happens in the session
+        </RevealText>
         <div className="grid-3">
-          <div className="card feature-card">
+          <Reveal variant="scale" delay={80} className="card feature-card">
             <div className="icon-chip">
               <span className="material-symbols-rounded">mic</span>
             </div>
@@ -68,8 +71,8 @@ export function HomeV1() {
               Gemini Live listens and speaks back over a live connection, so
               you can interrupt mid-sentence the way you would with a person.
             </p>
-          </div>
-          <div className="card feature-card">
+          </Reveal>
+          <Reveal variant="scale" delay={160} className="card feature-card">
             <div className="icon-chip">
               <span className="material-symbols-rounded">chat</span>
             </div>
@@ -78,8 +81,8 @@ export function HomeV1() {
               Duration, severity, medications, and allergies come up one at a
               time instead of as a long form.
             </p>
-          </div>
-          <div className="card feature-card">
+          </Reveal>
+          <Reveal variant="scale" delay={240} className="card feature-card">
             <div className="icon-chip">
               <span className="material-symbols-rounded">clinical_notes</span>
             </div>
@@ -88,14 +91,16 @@ export function HomeV1() {
               Tool calls update the summary panel while you talk. When you are
               done, copy or download the handoff.
             </p>
-          </div>
+          </Reveal>
         </div>
       </section>
 
-      <p className="disclaimer">
-        Demo only. This tool does not provide medical advice, diagnosis, or
-        treatment. For emergencies, call your local emergency number.
-      </p>
+      <RevealText delay={60}>
+        <p className="disclaimer">
+          Demo only. This tool does not provide medical advice, diagnosis, or
+          treatment. For emergencies, call your local emergency number.
+        </p>
+      </RevealText>
     </>
   );
 }

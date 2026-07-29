@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandHeader } from "@/components/BrandHeader";
 import { LiquidGlass } from "@/components/LiquidGlass";
+import { Reveal, RevealText } from "@/components/ScrollReveal";
 
 const DECISION_BAR_GLASS = { scale: -80, chroma: 4, blur: 4 };
 
@@ -61,7 +62,7 @@ export default function HomeV2() {
       </section>
 
       <section className="section problem-section" id="problem">
-        <div className="problem-copy">
+        <RevealText className="problem-copy" delay={40}>
           <span className="eyebrow">The gap</span>
           <h2>Most intakes still start cold</h2>
           <p>
@@ -73,8 +74,8 @@ export default function HomeV2() {
             Voice fixes the friction. Structure fixes the handoff. This demo
             does both in one live session.
           </p>
-        </div>
-        <div className="problem-panel card">
+        </RevealText>
+        <Reveal as="div" variant="scale" delay={140} className="problem-panel card">
           <h3>What usually gets missed</h3>
           <ul className="miss-list">
             <li>
@@ -94,7 +95,7 @@ export default function HomeV2() {
               Chest pain, breathing trouble, and other red flags
             </li>
           </ul>
-        </div>
+        </Reveal>
       </section>
 
       <section className="showcase-section" id="showcase">
@@ -106,7 +107,7 @@ export default function HomeV2() {
             <div className="blob" />
           </div>
 
-          <div className="showcase-intro">
+          <RevealText className="showcase-intro" delay={40}>
             <span className="eyebrow">See it work</span>
             <h2>Talk on the left. Chart fills on the right.</h2>
             <p>
@@ -114,10 +115,14 @@ export default function HomeV2() {
               as soon as they are confirmed. That is the product, not a chat
               log after the fact.
             </p>
-          </div>
+          </RevealText>
 
           <div className="showcase-grid">
-            <div className="glass-light showcase-card convo-card">
+            <Reveal
+              variant="left"
+              delay={80}
+              className="glass-light showcase-card convo-card"
+            >
               <div className="showcase-card-head">
                 <div className="icon-chip">
                   <span className="material-symbols-rounded">graphic_eq</span>
@@ -127,33 +132,28 @@ export default function HomeV2() {
                   <h3>Patient + assistant</h3>
                 </div>
               </div>
-              <ol className="convo-demo">
-                <li className="convo-line patient fade-up">
+              <ol className="convo-demo sr-stagger">
+                <li className="convo-line patient">
                   I&apos;ve had this tight headache behind my eyes since
                   yesterday afternoon.
                 </li>
-                <li
-                  className="convo-line assistant fade-up"
-                  style={{ animationDelay: "120ms" }}
-                >
+                <li className="convo-line assistant">
                   On a scale from 0 to 10, how bad is it right now?
                 </li>
-                <li
-                  className="convo-line patient fade-up"
-                  style={{ animationDelay: "240ms" }}
-                >
+                <li className="convo-line patient">
                   Maybe a six. Light bothers me, and I took ibuprofen once.
                 </li>
-                <li
-                  className="convo-line assistant fade-up"
-                  style={{ animationDelay: "360ms" }}
-                >
+                <li className="convo-line assistant">
                   Any chest pain or trouble breathing with it?
                 </li>
               </ol>
-            </div>
+            </Reveal>
 
-            <div className="card showcase-card summary-demo">
+            <Reveal
+              variant="right"
+              delay={160}
+              className="card showcase-card summary-demo"
+            >
               <div className="showcase-card-head">
                 <div className="icon-chip">
                   <span className="material-symbols-rounded">
@@ -190,59 +190,63 @@ export default function HomeV2() {
               <p className="demo-caption">
                 Illustrative preview. Your live session writes the real fields.
               </p>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
       <section className="section" id="how-it-works">
-        <h2>From first word to handoff</h2>
+        <RevealText as="h2" delay={40}>
+          From first word to handoff
+        </RevealText>
         <div className="grid-3 flow-steps">
-          <div className="card feature-card">
+          <Reveal variant="scale" delay={80} className="card feature-card">
             <div className="step-num">1</div>
             <h3>Speak</h3>
             <p>
               Open the session on any phone or laptop. Say what brought you in.
               Interrupt anytime.
             </p>
-          </div>
-          <div className="card feature-card">
+          </Reveal>
+          <Reveal variant="scale" delay={160} className="card feature-card">
             <div className="step-num">2</div>
             <h3>Clarify</h3>
             <p>
               One follow-up at a time: duration, severity, meds, allergies, red
               flags. No wall of form fields.
             </p>
-          </div>
-          <div className="card feature-card">
+          </Reveal>
+          <Reveal variant="scale" delay={240} className="card feature-card">
             <div className="step-num">3</div>
             <h3>Handoff</h3>
             <p>
               Copy a clinician note, download a branded PDF for WhatsApp or
               email, or export JSON. The chart starts warm.
             </p>
-          </div>
+          </Reveal>
         </div>
 
-        <div className="cta-row final-cta">
+        <Reveal className="cta-row final-cta" delay={120}>
           <Link href="/intake" className="btn btn-primary">
             Start voice intake
           </Link>
           <a href="#showcase" className="btn btn-ghost">
             Review the demo above
           </a>
-        </div>
+        </Reveal>
       </section>
 
       <footer className="site-footer">
-        <p className="disclaimer">
-          Demo only. This tool does not provide medical advice, diagnosis, or
-          treatment. For emergencies, call your local emergency number.
-        </p>
-        <p className="footer-meta">
-          Prefer the original short homepage?{" "}
-          <Link href="/v1">Open classic V1</Link>
-        </p>
+        <RevealText delay={40}>
+          <p className="disclaimer">
+            Demo only. This tool does not provide medical advice, diagnosis, or
+            treatment. For emergencies, call your local emergency number.
+          </p>
+          <p className="footer-meta">
+            Prefer the original short homepage?{" "}
+            <Link href="/v1">Open classic V1</Link>
+          </p>
+        </RevealText>
       </footer>
     </>
   );

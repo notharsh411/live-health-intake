@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { BrandHeader } from "@/components/BrandHeader";
 import { IntakeSummaryCard } from "@/components/IntakeSummaryCard";
+import { Reveal, RevealText } from "@/components/ScrollReveal";
 import {
   downloadHandoffPdf,
   shareHandoffPdf,
@@ -153,31 +154,39 @@ export default function HandoffPage() {
       />
       <div className="handoff-inner">
         <header className="page-header">
-          <span className="eyebrow">Clinician handoff</span>
-          <h1>Intake summary</h1>
-          <p>
-            Review what the voice session captured. Download a branded PDF to
-            carry or send by email, WhatsApp, or other apps — or copy the note /
-            JSON. Partial sessions from screen sleep are still available here.
-          </p>
+          <RevealText delay={20}>
+            <span className="eyebrow">Clinician handoff</span>
+            <h1>Intake summary</h1>
+            <p>
+              Review what the voice session captured. Download a branded PDF to
+              carry or send by email, WhatsApp, or other apps — or copy the note /
+              JSON. Partial sessions from screen sleep are still available here.
+            </p>
+          </RevealText>
         </header>
 
         <div className="card">
-          <h3>Clinician note</h3>
+          <RevealText delay={40}>
+            <h3>Clinician note</h3>
+          </RevealText>
           {loading ? (
             <p className="summary-empty">Writing the note...</p>
           ) : (
-            <p className="handoff-note">{note}</p>
+            <Reveal variant="fade" delay={80}>
+              <p className="handoff-note">{note}</p>
+            </Reveal>
           )}
         </div>
 
-        <IntakeSummaryCard
-          summary={summary}
-          title="Structured fields"
-          triageReason={triageReason}
-        />
+        <Reveal variant="scale" delay={100}>
+          <IntakeSummaryCard
+            summary={summary}
+            title="Structured fields"
+            triageReason={triageReason}
+          />
+        </Reveal>
 
-        <div className="handoff-actions">
+        <Reveal className="handoff-actions" delay={160}>
           <button
             type="button"
             className="btn btn-primary"
@@ -215,7 +224,7 @@ export default function HandoffPage() {
           <Link href="/intake" className="btn btn-ghost">
             Start over
           </Link>
-        </div>
+        </Reveal>
 
         {copyMessage && <p className="copy-toast">{copyMessage}</p>}
       </div>
