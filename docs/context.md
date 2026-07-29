@@ -19,7 +19,7 @@ Live Health Intake Assistant for NSOffice.AI internship. Voice symptom intake vi
 | `/` | **V2 homepage** (story + product showcase). Default. |
 | `/v1` | **V1 homepage** (original simple hero). Fallback if V2 regresses. |
 | `/intake` | Live voice session + live summary card |
-| `/handoff` | Clinician note + copy/download |
+| `/handoff` | Clinician note + PDF / share / copy / JSON |
 | `/replay` | Reviewer replay of last session recording (no mic) |
 | `/api/live-token` | Server mints ephemeral Gemini Live token (API key never in browser) |
 | `/api/summary/export` | Optional note polish via `gemini-3-flash-preview` |

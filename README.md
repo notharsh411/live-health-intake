@@ -76,7 +76,7 @@ npm run start    # serve production build
 
 1. **Landing:** hero with aurora mesh and glass Decision Bar; primary action starts intake.
 2. **Intake:** browser requests `POST /api/live-token`, connects to Gemini Live with the ephemeral token, streams mic PCM, plays model audio, and applies `update_intake_summary` / `complete_intake` tool calls to React state.
-3. **Handoff:** structured fields plus an optional polished note from `POST /api/summary/export`; copy or download JSON.
+3. **Handoff:** structured fields plus an optional polished note from `POST /api/summary/export`; download a branded PDF (or share via the system sheet), copy text, or download JSON.
 
 ## Deploy on Vercel
 

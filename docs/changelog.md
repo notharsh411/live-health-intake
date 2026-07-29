@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 (PDF handoff)
+
+- Branded PDF report on `/handoff` (Electric Blue header, triage badge, clinician note, structured fields, disclaimer)
+- Download PDF + native Share sheet (email / WhatsApp / Files) when the browser supports file sharing
+- Client-side generation via `jspdf` in `lib/handoff-pdf.ts` (no server secrets in the PDF path)
+
 ## 2026-07-29 (camera UX)
 
 - Camera opens in preview-only mode; frames are not sent until “I’m showing it now”

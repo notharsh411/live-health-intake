@@ -218,7 +218,8 @@ export default function HomeV2() {
             <div className="step-num">3</div>
             <h3>Handoff</h3>
             <p>
-              Copy a clinician note or download JSON. The chart starts warm.
+              Copy a clinician note, download a branded PDF for WhatsApp or
+              email, or export JSON. The chart starts warm.
             </p>
           </div>
         </div>
