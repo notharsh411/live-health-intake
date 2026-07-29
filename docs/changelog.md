@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-29 (brand + hardening)
+
+- Official NSOffice.AI logo/favicon from nsoffice.ai under `public/brand/`
+- Brand header across pages; glass kit tokens unchanged (Electric Blue remains)
+- Production hardening: middleware CSP/HSTS, API origin checks, rate limits, body limits, sanitization, error boundary
+- Screen-sleep fix: Wake Lock, visibility autosave, interrupted state with saved handoff path
+- Added `docs/security.md`
+
 ## 2026-07-29 (evening features)
 
 - Camera / document grounding: optional prompt to share medication or skin area (~1 fps JPEG)

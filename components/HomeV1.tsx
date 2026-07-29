@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandHeader } from "@/components/BrandHeader";
 import { LiquidGlass } from "@/components/LiquidGlass";
 
 const DECISION_BAR_GLASS = { scale: -80, chroma: 4, blur: 4 };
@@ -7,6 +8,14 @@ const DECISION_BAR_GLASS = { scale: -80, chroma: 4, blur: 4 };
 export function HomeV1() {
   return (
     <>
+      <BrandHeader
+        compact
+        trailing={
+          <Link href="/" className="btn btn-ghost">
+            Switch to V2
+          </Link>
+        }
+      />
       <section className="hero">
         <div className="aurora" aria-hidden="true">
           <div className="blob" />
@@ -43,9 +52,6 @@ export function HomeV1() {
             <a href="#how-it-works" className="btn btn-ghost">
               How it works
             </a>
-            <Link href="/" className="btn btn-ghost">
-              Switch to V2
-            </Link>
           </div>
         </div>
       </section>

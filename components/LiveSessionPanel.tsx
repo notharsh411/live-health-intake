@@ -26,6 +26,8 @@ function statusLabel(status: SessionStatus) {
       return "Listening";
     case "complete":
       return "Intake complete";
+    case "interrupted":
+      return "Session paused";
     case "error":
       return "Error";
     default:
@@ -44,6 +46,8 @@ function statusIcon(status: SessionStatus) {
       return "sync";
     case "complete":
       return "check_circle";
+    case "interrupted":
+      return "phone_paused";
     case "error":
       return "error";
     default:
@@ -80,7 +84,8 @@ export function LiveSessionPanel() {
   const isLive = status === "live";
   const isReady = status === "ready";
   const isBusy = status === "preparing" || status === "connecting";
-  const canConfigure = status === "idle" || status === "error";
+  const canConfigure =
+    status === "idle" || status === "error" || status === "interrupted";
   const hasSummary = Object.keys(summary).length > 0;
 
   return (
@@ -107,6 +112,21 @@ export function LiveSessionPanel() {
           </div>
 
           {errorMessage && <p className="session-error">{errorMessage}</p>}
+
+          {status === "interrupted" && (
+            <div className="interrupt-banner card compact-card">
+              <h4>Screen sleep interrupted the live line</h4>
+              <p>
+                Whatever was captured is still saved on this phone. Open the
+                handoff for the partial note, or connect again to continue.
+              </p>
+              <div className="session-actions">
+                <Link href="/handoff" className="btn btn-primary">
+                  Open saved handoff
+                </Link>
+              </div>
+            </div>
+          )}
 
           {canConfigure && (
             <div className="setup-grid">
@@ -152,7 +172,10 @@ export function LiveSessionPanel() {
 
           <p className="session-hint">
             {canConfigure &&
-              "Pick language and specialty, then connect. This is a live conversation, not a one-shot message."}
+              status !== "interrupted" &&
+              "Pick language and specialty, then connect. Keep the screen awake during the call when you can."}
+            {status === "interrupted" &&
+              "Nothing is lost from this browser session. Review the saved summary or start a fresh connection."}
             {isBusy && "Connecting securely..."}
             {isReady &&
               "Tap I'm ready to speak when you want to start. The assistant will keep asking follow-ups until the intake is complete."}
@@ -166,10 +189,10 @@ export function LiveSessionPanel() {
             {canConfigure && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className={`btn ${status === "interrupted" ? "btn-secondary" : "btn-primary"}`}
                 onClick={() => void startSession({ language, specialty })}
               >
-                Connect session
+                {status === "interrupted" ? "Reconnect session" : "Connect session"}
               </button>
             )}
             {isBusy && (

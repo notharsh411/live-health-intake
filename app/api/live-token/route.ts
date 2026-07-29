@@ -3,6 +3,13 @@ import {
   createLiveConnectConfig,
   DEFAULT_LIVE_MODEL,
 } from "@/lib/live-config";
+import {
+  assertJsonContentType,
+  readJsonBody,
+  rejectIfDisallowedOrigin,
+  securityJsonHeaders,
+} from "@/lib/security/http";
+import { clientKey, rateLimit } from "@/lib/security/rate-limit";
 import type { SessionOptions } from "@/lib/session-options";
 
 export const runtime = "nodejs";
@@ -21,22 +28,37 @@ function parseOptions(body: unknown): SessionOptions {
 }
 
 export async function POST(request: Request) {
+  const originError = rejectIfDisallowedOrigin(request);
+  if (originError) return originError;
+
+  const typeError = assertJsonContentType(request);
+  if (typeError) return typeError;
+
+  const limited = rateLimit(`live-token:${clientKey(request)}`, 12, 60_000);
+  if (!limited.allowed) {
+    return Response.json(
+      { error: "Too many session requests. Try again shortly." },
+      {
+        status: 429,
+        headers: securityJsonHeaders({
+          "Retry-After": String(limited.retryAfterSec),
+        }),
+      }
+    );
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return Response.json(
       { error: "GEMINI_API_KEY is not configured on the server." },
-      { status: 500 }
+      { status: 500, headers: securityJsonHeaders() }
     );
   }
 
   try {
-    let options: SessionOptions = { language: "en", specialty: "general" };
-    try {
-      const body = await request.json();
-      options = parseOptions(body);
-    } catch {
-      // empty body is fine
-    }
+    const { data, error } = await readJsonBody<Partial<SessionOptions>>(request);
+    if (error) return error;
+    const options = parseOptions(data);
 
     const model = DEFAULT_LIVE_MODEL;
     const voiceName = process.env.GEMINI_LIVE_VOICE ?? "Aoede";
@@ -58,21 +80,31 @@ export async function POST(request: Request) {
       },
     });
 
-    return Response.json({
-      token: token.name,
-      model,
-      voiceName,
-      expiresAt: expireTime,
-      options,
-    });
+    return Response.json(
+      {
+        token: token.name,
+        model,
+        voiceName,
+        expiresAt: expireTime,
+        options,
+      },
+      {
+        headers: securityJsonHeaders({
+          "X-RateLimit-Remaining": String(limited.remaining),
+        }),
+      }
+    );
   } catch (error) {
-    console.error("Failed to create Gemini ephemeral token:", error);
+    console.error("Failed to create Gemini ephemeral token");
     return Response.json(
       {
         error: "Failed to create Gemini ephemeral token.",
-        detail: error instanceof Error ? error.message : String(error),
+        detail:
+          process.env.NODE_ENV === "development" && error instanceof Error
+            ? error.message
+            : undefined,
       },
-      { status: 500 }
+      { status: 500, headers: securityJsonHeaders() }
     );
   }
 }

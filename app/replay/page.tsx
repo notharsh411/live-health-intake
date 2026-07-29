@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { BrandHeader } from "@/components/BrandHeader";
 import { IntakeSummaryCard } from "@/components/IntakeSummaryCard";
 import {
   emptyIntakeSummary,
@@ -83,6 +84,14 @@ export default function ReplayPage() {
 
   return (
     <main className="handoff-page hive">
+      <BrandHeader
+        compact
+        trailing={
+          <Link href="/intake" className="btn btn-ghost">
+            Intake
+          </Link>
+        }
+      />
       <div className="handoff-inner replay-inner">
         <header className="page-header">
           <span className="eyebrow">Reviewer replay</span>

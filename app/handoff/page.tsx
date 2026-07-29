@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BrandHeader } from "@/components/BrandHeader";
 import { IntakeSummaryCard } from "@/components/IntakeSummaryCard";
 import {
   emptyIntakeSummary,
@@ -47,12 +48,16 @@ export default function HandoffPage() {
   async function copyNote() {
     const text = [
       "PRE-CONSULTATION INTAKE NOTE",
+      summary.triage_level ? `TRIAGE: ${summary.triage_level.toUpperCase()}` : "",
+      triageReason ? `REASON: ${triageReason}` : "",
       "",
       note,
       "",
       "STRUCTURED FIELDS",
       JSON.stringify(summary, null, 2),
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     await navigator.clipboard.writeText(text);
     setCopyMessage("Copied to clipboard.");
@@ -61,7 +66,7 @@ export default function HandoffPage() {
 
   function downloadJson() {
     const blob = new Blob(
-      [JSON.stringify({ summary, transcript, note }, null, 2)],
+      [JSON.stringify({ summary, transcript, note, triageReason }, null, 2)],
       { type: "application/json" }
     );
     const url = URL.createObjectURL(blob);
@@ -74,13 +79,22 @@ export default function HandoffPage() {
 
   return (
     <main className="handoff-page hive">
+      <BrandHeader
+        compact
+        trailing={
+          <Link href="/intake" className="btn btn-ghost">
+            Intake
+          </Link>
+        }
+      />
       <div className="handoff-inner">
         <header className="page-header">
           <span className="eyebrow">Clinician handoff</span>
           <h1>Intake summary</h1>
           <p>
             Review what the voice session captured. Copy the note or download
-            the JSON before the visit.
+            the JSON before the visit. Partial sessions from screen sleep are
+            still available here.
           </p>
         </header>
 

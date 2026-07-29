@@ -42,8 +42,14 @@ Live Health Intake Assistant for NSOffice.AI internship. Voice symptom intake vi
 ## Non-negotiables
 
 - NSOffice Glass UI: Electric Blue `#0000FE`, DM Sans, Decision Bar, no emoji, no em dashes in copy
+- Official NSOffice wordmark from nsoffice.ai in `/public/brand/` (marketing site purple accents are not used; assignment kit keeps Electric Blue)
 - Secrets only in `.env.local` (gitignored) and Vercel env. Never commit keys.
 - Phone users open the Vercel URL only. No local repo or local API key required; mic + HTTPS required.
+- Screen Wake Lock + interrupted handoff when sleep kills the live socket
+
+## Security
+
+See `docs/security.md`. Headers, rate limits, origin checks, body limits, sanitization. Not magical invulnerability; production-grade for this demo architecture.
 
 ## Attach in a new chat
 

@@ -38,6 +38,12 @@ import {
   type RecordingEvent,
   type SessionRecording,
 } from "@/lib/session-recording";
+import {
+  releaseScreenWakeLock,
+  requestScreenWakeLock,
+  resumeAudioContext,
+  type WakeLockSentinelLike,
+} from "@/lib/wake-lock";
 
 export type SessionStatus =
   | "idle"
@@ -46,6 +52,7 @@ export type SessionStatus =
   | "ready"
   | "live"
   | "complete"
+  | "interrupted"
   | "error";
 
 type TokenPayload = {
@@ -55,6 +62,17 @@ type TokenPayload = {
 };
 
 const VIDEO_INTERVAL_MS = 1100;
+
+function hasSavedSummary(): boolean {
+  try {
+    const raw = sessionStorage.getItem(INTAKE_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as IntakeSummary;
+    return Object.keys(parsed).length > 0;
+  } catch {
+    return false;
+  }
+}
 
 export function useLiveIntake(onComplete?: () => void) {
   const [status, setStatus] = useState<SessionStatus>("idle");
@@ -93,6 +111,9 @@ export function useLiveIntake(onComplete?: () => void) {
   const modelTranscriptRef = useRef("");
   const recordingRef = useRef<SessionRecording | null>(null);
   const pulseTimerRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+  const statusRef = useRef<SessionStatus>("idle");
+  statusRef.current = status;
 
   const persistState = useCallback(
     (nextSummary: IntakeSummary, lines: string[]) => {
@@ -404,6 +425,8 @@ export function useLiveIntake(onComplete?: () => void) {
           setStatus("complete");
           isActiveRef.current = false;
           conversationStartedRef.current = false;
+          void releaseScreenWakeLock(wakeLockRef.current);
+          wakeLockRef.current = null;
           response = { ready: true };
           appendTranscript("system", "Intake marked complete.");
           pushRecording({ type: "complete" });
@@ -485,12 +508,32 @@ export function useLiveIntake(onComplete?: () => void) {
   const stopSession = useCallback(async () => {
     isActiveRef.current = false;
     conversationStartedRef.current = false;
+    await releaseScreenWakeLock(wakeLockRef.current);
+    wakeLockRef.current = null;
     closeSession(sessionRef.current);
     sessionRef.current = undefined;
     await cleanupAudio();
     setStatus("idle");
     setCameraPromptOpen(false);
   }, [cleanupAudio, closeSession]);
+
+  const markInterrupted = useCallback(async (reason: string) => {
+    isActiveRef.current = false;
+    conversationStartedRef.current = false;
+    await releaseScreenWakeLock(wakeLockRef.current);
+    wakeLockRef.current = null;
+    sessionRef.current = undefined;
+    await cleanupAudio();
+    persistState(summaryRef.current, transcriptRef.current);
+    appendTranscript("system", reason);
+    setStatus(hasSavedSummary() ? "interrupted" : "error");
+    setCameraPromptOpen(false);
+  }, [appendTranscript, cleanupAudio, persistState]);
+
+  const acquireWakeLock = useCallback(async () => {
+    await releaseScreenWakeLock(wakeLockRef.current);
+    wakeLockRef.current = await requestScreenWakeLock();
+  }, []);
 
   const beginConversation = useCallback(async () => {
     const session = sessionRef.current;
@@ -499,6 +542,7 @@ export function useLiveIntake(onComplete?: () => void) {
     conversationStartedRef.current = true;
     setStatus("live");
     startCapture();
+    await acquireWakeLock();
 
     try {
       await session.sendClientContent({
@@ -520,10 +564,10 @@ export function useLiveIntake(onComplete?: () => void) {
 
     appendTranscript(
       "system",
-      "Conversation started. Keep talking through the follow-ups."
+      "Conversation started. Keep talking through the follow-ups. Leave the screen on if you can."
     );
     window.setTimeout(() => setCameraPromptOpen(true), 4500);
-  }, [appendTranscript, startCapture, status]);
+  }, [acquireWakeLock, appendTranscript, startCapture, status]);
 
   const startSession = useCallback(
     async (options: SessionOptions) => {
@@ -595,16 +639,27 @@ export function useLiveIntake(onComplete?: () => void) {
                 activate();
               });
             },
-            onerror: (event) => {
-              setErrorMessage(event.message || "Gemini Live session error.");
-              setStatus("error");
-              void stopSession();
+            onerror: () => {
+              setErrorMessage(
+                "The live connection dropped. Your saved summary is still available."
+              );
+              void markInterrupted(
+                "Connection error. Partial summary was saved in this browser."
+              );
             },
             onclose: () => {
-              if (isActiveRef.current) {
-                isActiveRef.current = false;
-                setStatus((s) => (s === "complete" ? "complete" : "idle"));
+              if (statusRef.current === "complete") return;
+              if (
+                conversationStartedRef.current ||
+                statusRef.current === "live" ||
+                statusRef.current === "ready"
+              ) {
+                void markInterrupted(
+                  "Session closed (often from screen sleep). Partial summary was saved."
+                );
+                return;
               }
+              isActiveRef.current = false;
             },
           },
         });
@@ -623,21 +678,55 @@ export function useLiveIntake(onComplete?: () => void) {
       appendTranscript,
       cleanupAudio,
       handleLiveMessage,
+      markInterrupted,
       setupAudio,
-      stopSession,
     ]
   );
 
   useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void resumeAudioContext(captureContextRef.current);
+        void resumeAudioContext(playbackContextRef.current);
+        if (statusRef.current === "live") {
+          void acquireWakeLock();
+        }
+        return;
+      }
+
+      // Screen off / tab hidden: force-persist whatever we have so far.
+      persistState(summaryRef.current, transcriptRef.current);
+    };
+
+    const onPageHide = () => {
+      persistState(summaryRef.current, transcriptRef.current);
+    };
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (statusRef.current === "live" || statusRef.current === "ready") {
+        persistState(summaryRef.current, transcriptRef.current);
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [acquireWakeLock, persistState]);
+
+  useEffect(() => {
     return () => {
       if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
+      void releaseScreenWakeLock(wakeLockRef.current);
       void stopSession();
     };
   }, [stopSession]);
-
-  const canEndIntake =
-    status === "complete" ||
-    (status === "live" && hasRequiredFields(summary) && Boolean(summary.triage_level));
 
   return {
     status,
@@ -652,7 +741,6 @@ export function useLiveIntake(onComplete?: () => void) {
     cameraPromptOpen,
     recording,
     videoElRef,
-    canEndIntake,
     startSession,
     beginConversation,
     enableCamera,

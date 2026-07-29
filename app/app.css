@@ -1,6 +1,6 @@
 /* App layout styles on top of tokens.css */
 
-.site-nav {
+.brand-header {
   position: sticky;
   top: 0;
   z-index: 20;
@@ -10,16 +10,43 @@
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
   padding-top: max(var(--space-md), env(safe-area-inset-top));
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
 
-.site-brand {
-  font: var(--text-medium);
-  font-weight: 800;
+.brand-header.compact {
+  padding-top: max(var(--space-sm), env(safe-area-inset-top));
+  padding-bottom: var(--space-sm);
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
   color: var(--ink);
-  letter-spacing: -0.02em;
+}
+
+.brand-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.brand-product {
+  font: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.brand-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
 }
 
 .site-nav-links {
@@ -41,6 +68,16 @@
 
 .site-nav-links .nav-fallback {
   color: var(--slate);
+}
+
+.interrupt-banner {
+  margin-bottom: var(--space-sm);
+}
+
+.interrupt-banner p {
+  margin: var(--space-sm) 0 var(--space-md);
+  color: var(--slate);
+  font: var(--text-light);
 }
 
 .hero {
@@ -543,6 +580,14 @@
 @media (max-width: 900px) {
   .site-nav-links a:not(.nav-fallback) {
     display: none;
+  }
+
+  .brand-product {
+    display: none;
+  }
+
+  .brand-logo {
+    height: 24px;
   }
 
   .problem-section,

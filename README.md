@@ -59,7 +59,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `GEMINI_API_KEY` | Yes | | Google AI Studio API key (server only) |
 | `GEMINI_LIVE_MODEL` | No | `gemini-3.1-flash-live-preview` | Live API model |
 | `GEMINI_TEXT_MODEL` | No | `gemini-3-flash-preview` | Turn-based model for clinician note export |
-| `GEMINI_LIVE_VOICE` | No | `Aoede` | Prebuilt Live voice name |
+| `ALLOWED_ORIGINS` | No | | Extra comma-separated origins allowed to call APIs |
+
 
 Never commit `.env` or `.env.local`. Both are covered by `.gitignore`.
 

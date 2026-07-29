@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandHeader } from "@/components/BrandHeader";
 import { LiquidGlass } from "@/components/LiquidGlass";
 
 const DECISION_BAR_GLASS = { scale: -80, chroma: 4, blur: 4 };
@@ -6,18 +7,17 @@ const DECISION_BAR_GLASS = { scale: -80, chroma: 4, blur: 4 };
 export default function HomeV2() {
   return (
     <>
-      <header className="site-nav">
-        <Link href="/" className="site-brand">
-          NSOffice.AI
-        </Link>
-        <nav className="site-nav-links" aria-label="Primary">
-          <a href="#problem">The gap</a>
-          <a href="#showcase">See it work</a>
-          <Link href="/v1" className="nav-fallback">
-            Classic V1
-          </Link>
-        </nav>
-      </header>
+      <BrandHeader
+        trailing={
+          <nav className="site-nav-links" aria-label="Primary">
+            <a href="#problem">The gap</a>
+            <a href="#showcase">See it work</a>
+            <Link href="/v1" className="nav-fallback">
+              Classic V1
+            </Link>
+          </nav>
+        }
+      />
 
       <section className="hero hero-v2">
         <div className="aurora" aria-hidden="true">
@@ -27,7 +27,7 @@ export default function HomeV2() {
           <div className="blob" />
         </div>
         <div className="hero-inner">
-          <span className="eyebrow fade-up">Live Health Intake</span>
+          <span className="eyebrow fade-up">NSOffice.AI · Live Health Intake</span>
           <h1 className="fade-up" style={{ animationDelay: "40ms" }}>
             Walk into the visit with the story already written
           </h1>
