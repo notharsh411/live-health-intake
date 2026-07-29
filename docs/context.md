@@ -29,7 +29,7 @@ Live Health Intake Assistant for NSOffice.AI internship. Voice symptom intake vi
 1. Pick **language** (English / Hindi / Hinglish) and **specialty** (General / ENT / Cardio / Peds)
 2. **Connect session**
 3. Tap **I'm ready to speak** to begin (mic stays muted until then)
-4. Optional camera prompt: share medication / skin / document
+4. Optional camera: preview first → Flip camera → “I’m showing it now” before frames stream
 5. **Finish stays locked** until the model calls `complete_intake`
 6. Summary shows **live field pulses** + **triage badge** (`routine` / `soon` / `urgent`)
 

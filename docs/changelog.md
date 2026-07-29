@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 (camera UX)
+
+- Camera opens in preview-only mode; frames are not sent until “I’m showing it now”
+- Front / rear camera flip for phones; front preview mirrored
+- Prompt: ignore ambient room/face until a med label, skin, or document is clearly presented
+
 ## 2026-07-29 (brand + hardening)
 
 - Official NSOffice.AI logo/favicon from nsoffice.ai under `public/brand/`

@@ -63,6 +63,8 @@ type TokenPayload = {
 
 const VIDEO_INTERVAL_MS = 1100;
 
+export type CameraFacing = "user" | "environment";
+
 function hasSavedSummary(): boolean {
   try {
     const raw = sessionStorage.getItem(INTAKE_STORAGE_KEY);
@@ -85,6 +87,8 @@ export function useLiveIntake(onComplete?: () => void) {
   const [triageReason, setTriageReason] = useState<string | null>(null);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [cameraPromptOpen, setCameraPromptOpen] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>("environment");
+  const [framesStreaming, setFramesStreaming] = useState(false);
   const [recording, setRecording] = useState<SessionRecording | null>(null);
 
   const sessionRef = useRef<Session | undefined>(undefined);
@@ -92,6 +96,8 @@ export function useLiveIntake(onComplete?: () => void) {
   const videoStreamRef = useRef<MediaStream | undefined>(undefined);
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const videoTimerRef = useRef<number | null>(null);
+  const framesStreamingRef = useRef(false);
+  const cameraFacingRef = useRef<CameraFacing>("environment");
   const captureContextRef = useRef<AudioContext | undefined>(undefined);
   const playbackContextRef = useRef<AudioContext | undefined>(undefined);
   const playbackGainRef = useRef<GainNode | undefined>(undefined);
@@ -176,6 +182,8 @@ export function useLiveIntake(onComplete?: () => void) {
       window.clearInterval(videoTimerRef.current);
       videoTimerRef.current = null;
     }
+    framesStreamingRef.current = false;
+    setFramesStreaming(false);
     if (videoStreamRef.current) {
       for (const track of videoStreamRef.current.getTracks()) track.stop();
     }
@@ -184,6 +192,28 @@ export function useLiveIntake(onComplete?: () => void) {
       videoElRef.current.srcObject = null;
     }
     setCameraEnabled(false);
+  }, []);
+
+  const attachVideoStream = useCallback(async (stream: MediaStream) => {
+    if (videoStreamRef.current) {
+      for (const track of videoStreamRef.current.getTracks()) track.stop();
+    }
+    videoStreamRef.current = stream;
+    if (videoElRef.current) {
+      videoElRef.current.srcObject = stream;
+      await videoElRef.current.play().catch(() => undefined);
+    }
+  }, []);
+
+  const requestCameraStream = useCallback(async (facing: CameraFacing) => {
+    return navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: facing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
   }, []);
 
   const cleanupAudio = useCallback(async () => {
@@ -321,6 +351,7 @@ export function useLiveIntake(onComplete?: () => void) {
     const session = sessionRef.current;
     const video = videoElRef.current;
     if (!session || !video || !conversationStartedRef.current) return;
+    if (!framesStreamingRef.current) return;
     if (video.videoWidth < 16 || video.videoHeight < 16) return;
 
     const canvas = document.createElement("canvas");
@@ -343,29 +374,26 @@ export function useLiveIntake(onComplete?: () => void) {
     });
   }, []);
 
+  const ensureFrameTimer = useCallback(() => {
+    if (videoTimerRef.current) return;
+    videoTimerRef.current = window.setInterval(sendVideoFrame, VIDEO_INTERVAL_MS);
+  }, [sendVideoFrame]);
+
   const enableCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-      videoStreamRef.current = stream;
-      if (videoElRef.current) {
-        videoElRef.current.srcObject = stream;
-        await videoElRef.current.play().catch(() => undefined);
-      }
+      const facing = cameraFacingRef.current;
+      const stream = await requestCameraStream(facing);
+      await attachVideoStream(stream);
+      setCameraFacing(facing);
       setCameraEnabled(true);
       setCameraPromptOpen(false);
+      framesStreamingRef.current = false;
+      setFramesStreaming(false);
       appendTranscript(
         "system",
-        "Camera sharing on. Point at a medication label or skin area if you want."
+        "Camera preview on. Frames are not shared yet — point at the item, then tap “I’m showing it now”."
       );
-      if (videoTimerRef.current) window.clearInterval(videoTimerRef.current);
-      videoTimerRef.current = window.setInterval(sendVideoFrame, VIDEO_INTERVAL_MS);
+      ensureFrameTimer();
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -374,7 +402,58 @@ export function useLiveIntake(onComplete?: () => void) {
       );
       setCameraPromptOpen(false);
     }
-  }, [appendTranscript, sendVideoFrame]);
+  }, [appendTranscript, attachVideoStream, ensureFrameTimer, requestCameraStream]);
+
+  const beginFrameStreaming = useCallback(() => {
+    if (!cameraEnabled || !videoStreamRef.current) return;
+    framesStreamingRef.current = true;
+    setFramesStreaming(true);
+    ensureFrameTimer();
+    appendTranscript(
+      "system",
+      "Now sharing camera frames with the assistant (~1 per second)."
+    );
+    const session = sessionRef.current;
+    if (session && conversationStartedRef.current) {
+      try {
+        session.sendRealtimeInput({
+          text: "The patient is now deliberately showing something to the camera for clinical grounding. Ignore prior ambient preview. Only describe a medication label, skin finding, or document when clearly visible.",
+        });
+      } catch {
+        // Non-fatal: frames still stream.
+      }
+      window.setTimeout(() => sendVideoFrame(), 200);
+    }
+  }, [
+    appendTranscript,
+    cameraEnabled,
+    ensureFrameTimer,
+    sendVideoFrame,
+  ]);
+
+  const switchCamera = useCallback(async () => {
+    if (!cameraEnabled) return;
+    const next: CameraFacing =
+      cameraFacingRef.current === "environment" ? "user" : "environment";
+    try {
+      const stream = await requestCameraStream(next);
+      await attachVideoStream(stream);
+      cameraFacingRef.current = next;
+      setCameraFacing(next);
+      appendTranscript(
+        "system",
+        next === "environment"
+          ? "Switched to rear camera."
+          : "Switched to front camera."
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not switch cameras on this device."
+      );
+    }
+  }, [appendTranscript, attachVideoStream, cameraEnabled, requestCameraStream]);
 
   const handleToolCall = useCallback(
     async (functionCall: FunctionCall) => {
@@ -739,11 +818,15 @@ export function useLiveIntake(onComplete?: () => void) {
     triageReason,
     cameraEnabled,
     cameraPromptOpen,
+    cameraFacing,
+    framesStreaming,
     recording,
     videoElRef,
     startSession,
     beginConversation,
     enableCamera,
+    beginFrameStreaming,
+    switchCamera,
     declineCamera: () => setCameraPromptOpen(false),
     stopCamera,
     stopSession,

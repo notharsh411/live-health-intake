@@ -811,12 +811,38 @@
   margin-top: var(--space-md);
 }
 
+.camera-preview-wrap {
+  position: relative;
+}
+
 .camera-preview {
   width: 100%;
   max-height: 220px;
   object-fit: cover;
   border-radius: var(--radius-md);
   background: var(--ink-dark-bg);
+}
+
+.camera-preview.mirrored {
+  transform: scaleX(-1);
+}
+
+.camera-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-top: var(--space-sm);
+}
+
+.camera-flip-btn {
+  min-height: 44px;
+}
+
+.camera-live-pill {
+  font: var(--text-caption);
+  color: var(--electric-blue, #0000fe);
+  font-weight: 600;
 }
 
 .camera-caption {

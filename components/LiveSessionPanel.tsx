@@ -71,10 +71,14 @@ export function LiveSessionPanel() {
     triageReason,
     cameraEnabled,
     cameraPromptOpen,
+    cameraFacing,
+    framesStreaming,
     videoElRef,
     startSession,
     beginConversation,
     enableCamera,
+    beginFrameStreaming,
+    switchCamera,
     declineCamera,
     stopCamera,
   } = useLiveIntake(() => {
@@ -277,16 +281,42 @@ export function LiveSessionPanel() {
           )}
 
           <div className={`camera-stage${cameraEnabled ? " active" : ""}`}>
-            <video
-              ref={videoElRef}
-              className="camera-preview"
-              playsInline
-              muted
-              autoPlay
-            />
+            <div className="camera-preview-wrap">
+              <video
+                ref={videoElRef}
+                className={`camera-preview${cameraFacing === "user" ? " mirrored" : ""}`}
+                playsInline
+                muted
+                autoPlay
+              />
+              {cameraEnabled && (
+                <div className="camera-toolbar">
+                  <button
+                    type="button"
+                    className="btn btn-ghost camera-flip-btn"
+                    onClick={() => void switchCamera()}
+                  >
+                    Flip camera
+                  </button>
+                  {!framesStreaming ? (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={beginFrameStreaming}
+                    >
+                      I&apos;m showing it now
+                    </button>
+                  ) : (
+                    <span className="camera-live-pill">Sharing with assistant</span>
+                  )}
+                </div>
+              )}
+            </div>
             {cameraEnabled && (
               <p className="camera-caption">
-                Sharing ~1 frame per second. Hold labels steady.
+                {framesStreaming
+                  ? "Sharing ~1 frame per second. Hold labels steady. Use Flip camera if you need the other lens."
+                  : "Preview only — the assistant cannot see this yet. Aim at the med bottle, skin, or document, then tap I’m showing it now."}
               </p>
             )}
           </div>
