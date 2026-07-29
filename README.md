@@ -48,11 +48,6 @@ Beyond the assignment checklist:
 - **Reviewer replay** at `/replay` (last session recording, no mic)
 - **Branded PDF handoff:** download + native share (email / WhatsApp / Files), plus copy note and JSON export
 - **Screen-sleep resilience:** Wake Lock, autosave, interrupted state with saved handoff path
-- **Production hardening:** CSP/HSTS and related headers, rate limits, origin checks, body limits, sanitization (`docs/security.md`)
-- **NSOffice wordmark** from nsoffice.ai in the header/favicon
-- **V2 story homepage** on `/` with V1 fallback at `/v1`
-- **Scroll reveals** for text and cards (NSOffice-style motion, reduced-motion safe)
-- **Smooth navbar** anchors (The gap / See it work) and logo scroll-to-top
 
 ## Stack
 
