@@ -1,5 +1,22 @@
 /* App layout styles on top of tokens.css */
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Keep section titles clear of the sticky brand header */
+#problem,
+#showcase,
+#how-it-works {
+  scroll-margin-top: 88px;
+}
+
 .brand-header {
   position: sticky;
   top: 0;

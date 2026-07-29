@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandHeader } from "@/components/BrandHeader";
+import { BrandHeader, SmoothHashLink } from "@/components/BrandHeader";
 import { LiquidGlass } from "@/components/LiquidGlass";
 import { Reveal, RevealText } from "@/components/ScrollReveal";
 
@@ -11,8 +11,8 @@ export default function HomeV2() {
       <BrandHeader
         trailing={
           <nav className="site-nav-links" aria-label="Primary">
-            <a href="#problem">The gap</a>
-            <a href="#showcase">See it work</a>
+            <SmoothHashLink href="#problem">The gap</SmoothHashLink>
+            <SmoothHashLink href="#showcase">See it work</SmoothHashLink>
             <Link href="/v1" className="nav-fallback">
               Classic V1
             </Link>
@@ -230,9 +230,9 @@ export default function HomeV2() {
           <Link href="/intake" className="btn btn-primary">
             Start voice intake
           </Link>
-          <a href="#showcase" className="btn btn-ghost">
+          <SmoothHashLink href="#showcase" className="btn btn-ghost">
             Review the demo above
-          </a>
+          </SmoothHashLink>
         </Reveal>
       </section>
 

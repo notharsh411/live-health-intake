@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandHeader } from "@/components/BrandHeader";
+import { BrandHeader, SmoothHashLink } from "@/components/BrandHeader";
 import { LiquidGlass } from "@/components/LiquidGlass";
 import { Reveal, RevealText } from "@/components/ScrollReveal";
 
@@ -50,9 +50,9 @@ export function HomeV1() {
           </LiquidGlass>
 
           <div className="cta-row fade-up" style={{ animationDelay: "240ms" }}>
-            <a href="#how-it-works" className="btn btn-ghost">
+            <SmoothHashLink href="#how-it-works" className="btn btn-ghost">
               How it works
-            </a>
+            </SmoothHashLink>
           </div>
         </div>
       </section>
