@@ -8,15 +8,17 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
+  width: 100%;
+  box-sizing: border-box;
   padding: var(--space-md) var(--space-lg);
-  padding-top: max(var(--space-md), env(safe-area-inset-top));
-  background: rgba(255, 255, 255, 0.9);
+  padding-top: max(var(--space-md), env(safe-area-inset-top, 0px));
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
 
 .brand-header.compact {
-  padding-top: max(var(--space-sm), env(safe-area-inset-top));
+  padding-top: max(var(--space-sm), env(safe-area-inset-top, 0px));
   padding-bottom: var(--space-sm);
 }
 
@@ -374,16 +376,28 @@
 /* Intake session */
 .intake-page {
   min-height: 100vh;
-  padding: var(--space-xl) var(--space-lg);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.intake-page > .brand-header {
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .intake-layout {
   display: grid;
   grid-template-columns: 1fr 380px;
   gap: var(--space-lg);
+  width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+  padding-bottom: max(var(--space-xl), env(safe-area-inset-bottom));
   align-items: start;
+  flex: 1;
 }
 
 @media (max-width: 900px) {
@@ -540,15 +554,31 @@
 /* Handoff */
 .handoff-page {
   min-height: 100vh;
-  padding: var(--space-2xl) var(--space-lg);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.handoff-page > .brand-header {
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .handoff-inner {
   max-width: var(--content-max);
+  width: 100%;
   margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+  padding-bottom: max(var(--space-2xl), env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+  flex: 1;
+}
+
+.handoff-inner.replay-inner {
+  max-width: var(--page-max);
 }
 
 .handoff-note {
@@ -639,6 +669,10 @@
   }
 
   .intake-page {
+    padding: 0;
+  }
+
+  .intake-layout {
     padding: var(--space-md);
     padding-bottom: max(var(--space-xl), env(safe-area-inset-bottom));
   }
@@ -665,7 +699,11 @@
   }
 
   .handoff-page {
-    padding: var(--space-xl) var(--space-md);
+    padding: 0;
+  }
+
+  .handoff-inner {
+    padding: var(--space-lg) var(--space-md);
     padding-bottom: max(var(--space-xl), env(safe-area-inset-bottom));
   }
 
