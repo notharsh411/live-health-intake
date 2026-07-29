@@ -31,9 +31,11 @@ Live Health Intake Assistant for NSOffice.AI internship. Voice symptom intake vi
 
 ## Active work / latest decisions
 
-- Homepage V2 replaces V1 on `/`; V1 preserved at `/v1`
+- Homepage **V2** is default on `/` (problem narrative + product showcase)
+- Homepage **V1** preserved at `/v1` for fallback
 - Anchor docs live in `docs/` and must be updated after each meaningful change
 - Global skills: `~/.cursor/skills` → `~/.agents/skills`
+- Remote phone/desktop users only need the Vercel URL + mic; API key is on Vercel
 
 ## Attach in a new chat
 
