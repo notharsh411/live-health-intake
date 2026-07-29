@@ -40,3 +40,10 @@ Follow `nsoffice-glass-ui-kit/SKILL.md`. Brand wins on color/type. Apple HIG on 
 ## Remote / phone use
 
 Anyone with the Vercel URL can run the demo. Server holds `GEMINI_API_KEY`. Browser only needs mic permission over HTTPS. No local files required.
+
+## Pickup path for a new developer
+
+1. Read `README.md` (setup + project map).
+2. Skim `hooks/use-live-intake.ts` (session lifecycle) and `lib/intake-schema.ts` (tools).
+3. Run locally with `.env.local`, then walk `/intake` → `/handoff` → `/replay`.
+4. Security notes live in `docs/security.md`.
