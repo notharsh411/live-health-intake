@@ -13,18 +13,46 @@ Real-time voice health intake built for the NSOffice.AI internship assignment. A
 
 Phone or any browser: open the live demo URL over HTTPS, allow the microphone, and start intake. You do not need the repo, Node, or a local API key. The server holds `GEMINI_API_KEY` on Vercel.
 
-## Features
+## Assignment features
 
-- Live audio conversation with `gemini-3.1-flash-live-preview` (listen, speak, barge-in)
-- `update_intake_summary` tool calls fill the summary panel while the patient talks
-- `set_triage_level` tool shows a routine / soon / urgent badge for clinicians
-- Optional camera grounding for medication labels or skin findings (user opt-in)
-- Language modes (English, Hindi, Hinglish) and specialty templates (General, ENT, Cardio, Peds)
-- Live field pulses + reviewer replay at `/replay`
-- Conversation start gate and locked finish until the assistant completes follow-ups
-- Optional clinician note polish with `gemini-3-flash-preview`
-- NSOffice Glass UI: Electric Blue, DM Sans, aurora + liquid glass Decision Bar
-- API key stays on the server; the browser receives a short-lived ephemeral token
+Mapped to **What We Need To See** and idea **5. Live Health Intake Assistant** in `NSOffice_Internship_Assignment.docx`.
+
+### Brief requirements
+
+- Gemini API on the free tier (no billing required)
+- Real-time voice on Live model `gemini-3.1-flash-live-preview` (listen, speak, barge-in over a live connection)
+- Turn-based / text step on `gemini-3-flash-preview` for clinician note polish
+- API key only in environment variables; never committed (`.env*` gitignored)
+- NSOffice Glass UI on every screen: Electric Blue `#0000FE`, DM Sans, Apple-style spacing, one primary action per view
+- Kit assets in use: `tokens.css` and `liquid-glass.js`
+- Public GitHub repository with a clear README (description, setup, env vars, local commands)
+- Public Vercel deploy so the demo works with no local setup
+
+### Health intake idea (from the brief)
+
+- Patient describes symptoms out loud before a consultation
+- Assistant asks natural follow-up questions to fill gaps
+- Mid-conversation **tool calling** updates a structured doctor handoff (`update_intake_summary`, `complete_intake`)
+- Clinician sees a structured summary after the session (handoff note + fields)
+
+## Added features
+
+Beyond the assignment checklist:
+
+- **Triage badge** via `set_triage_level` (`routine` / `soon` / `urgent`) with reason on the summary
+- **Language modes:** English, Hindi, Hinglish
+- **Specialty templates:** General, ENT, Cardio, Peds
+- **Session gates:** Connect → I'm ready to speak; Finish locked until `complete_intake`
+- **Optional camera grounding:** preview first, flip front/rear, then I'm showing it now; vision honesty when camera is off; aim delay and frame quality gates
+- **Live field pulses** when tool calls update summary fields
+- **Reviewer replay** at `/replay` (last session recording, no mic)
+- **Branded PDF handoff:** download + native share (email / WhatsApp / Files), plus copy note and JSON export
+- **Screen-sleep resilience:** Wake Lock, autosave, interrupted state with saved handoff path
+- **Production hardening:** CSP/HSTS and related headers, rate limits, origin checks, body limits, sanitization (`docs/security.md`)
+- **NSOffice wordmark** from nsoffice.ai in the header/favicon
+- **V2 story homepage** on `/` with V1 fallback at `/v1`
+- **Scroll reveals** for text and cards (NSOffice-style motion, reduced-motion safe)
+- **Smooth navbar** anchors (The gap / See it work) and logo scroll-to-top
 
 ## Stack
 
