@@ -7,12 +7,14 @@ import {
   emptyIntakeSummary,
   INTAKE_STORAGE_KEY,
   TRANSCRIPT_STORAGE_KEY,
+  TRIAGE_REASON_KEY,
   type IntakeSummary,
 } from "@/lib/intake-schema";
 
 export default function HandoffPage() {
   const [summary, setSummary] = useState<IntakeSummary>(emptyIntakeSummary());
   const [transcript, setTranscript] = useState("");
+  const [triageReason, setTriageReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [copyMessage, setCopyMessage] = useState("");
@@ -20,9 +22,11 @@ export default function HandoffPage() {
   useEffect(() => {
     const stored = sessionStorage.getItem(INTAKE_STORAGE_KEY);
     const storedTranscript = sessionStorage.getItem(TRANSCRIPT_STORAGE_KEY) ?? "";
+    const storedReason = sessionStorage.getItem(TRIAGE_REASON_KEY);
     const parsed = stored ? (JSON.parse(stored) as IntakeSummary) : emptyIntakeSummary();
     setSummary(parsed);
     setTranscript(storedTranscript);
+    setTriageReason(storedReason);
 
     void fetch("/api/summary/export", {
       method: "POST",
@@ -89,7 +93,11 @@ export default function HandoffPage() {
           )}
         </div>
 
-        <IntakeSummaryCard summary={summary} title="Structured fields" />
+        <IntakeSummaryCard
+          summary={summary}
+          title="Structured fields"
+          triageReason={triageReason}
+        />
 
         <div className="handoff-actions">
           <button
@@ -107,6 +115,9 @@ export default function HandoffPage() {
           >
             Download JSON
           </button>
+          <Link href="/replay" className="btn btn-ghost">
+            Reviewer replay
+          </Link>
           <Link href="/intake" className="btn btn-ghost">
             Start over
           </Link>

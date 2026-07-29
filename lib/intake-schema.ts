@@ -2,6 +2,9 @@ import { Type, type FunctionDeclaration, type Tool } from "@google/genai";
 
 export const UPDATE_INTAKE_SUMMARY = "update_intake_summary";
 export const COMPLETE_INTAKE = "complete_intake";
+export const SET_TRIAGE_LEVEL = "set_triage_level";
+
+export type TriageLevel = "routine" | "soon" | "urgent";
 
 export type IntakeSummary = {
   chief_complaint?: string;
@@ -14,14 +17,30 @@ export type IntakeSummary = {
   red_flags?: string[];
   missing_information?: string[];
   clinician_notes?: string;
+  triage_level?: TriageLevel;
+  visual_findings?: string;
 };
 
 export const emptyIntakeSummary = (): IntakeSummary => ({});
 
+export const REQUIRED_FOR_COMPLETE: (keyof IntakeSummary)[] = [
+  "chief_complaint",
+  "duration",
+  "severity_0_10",
+];
+
+export function hasRequiredFields(summary: IntakeSummary): boolean {
+  return REQUIRED_FOR_COMPLETE.every((key) => {
+    const value = summary[key];
+    if (value === undefined || value === null || value === "") return false;
+    return true;
+  });
+}
+
 export const updateIntakeSummaryDeclaration = {
   name: UPDATE_INTAKE_SUMMARY,
   description:
-    "Update the structured clinical intake summary with new facts learned from the conversation. Call this after each new piece of information. Only include fields that changed or were newly confirmed.",
+    "Update the structured clinical intake summary with new facts learned from the conversation or from a shared camera/document view. Call this after each new piece of information. Only include fields that changed or were newly confirmed.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -70,14 +89,40 @@ export const updateIntakeSummaryDeclaration = {
         type: Type.STRING,
         description: "Brief notes for the clinician, not shown to the patient.",
       },
+      visual_findings: {
+        type: Type.STRING,
+        description:
+          "What you observe from a shared camera view (medication label, skin finding, document). Describe facts only.",
+      },
     },
+  },
+} satisfies FunctionDeclaration;
+
+export const setTriageLevelDeclaration = {
+  name: SET_TRIAGE_LEVEL,
+  description:
+    "Set a single urgency triage level for the clinician queue. Call once you have enough context, and update if urgency clearly changes. Use urgent for red-flag emergencies, soon for same-day or next-day concern, routine otherwise.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      level: {
+        type: Type.STRING,
+        description: "One of: routine, soon, urgent.",
+        enum: ["routine", "soon", "urgent"],
+      },
+      reason: {
+        type: Type.STRING,
+        description: "Short clinical reason for the triage level.",
+      },
+    },
+    required: ["level"],
   },
 } satisfies FunctionDeclaration;
 
 export const completeIntakeDeclaration = {
   name: COMPLETE_INTAKE,
   description:
-    "Signal that enough information has been collected and the intake is ready for clinician handoff.",
+    "Signal that enough information has been collected and the intake is ready for clinician handoff. Only call when chief complaint, duration, and severity are confirmed, and you have asked about red flags.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -94,6 +139,7 @@ export const intakeTools: Tool[] = [
   {
     functionDeclarations: [
       updateIntakeSummaryDeclaration,
+      setTriageLevelDeclaration,
       completeIntakeDeclaration,
     ],
   },
@@ -111,5 +157,27 @@ export function mergeIntakeSummary(
   };
 }
 
+export function changedSummaryKeys(
+  previous: IntakeSummary,
+  next: IntakeSummary
+): string[] {
+  const keys = new Set([
+    ...Object.keys(previous),
+    ...Object.keys(next),
+  ]) as Set<keyof IntakeSummary>;
+  const changed: string[] = [];
+  for (const key of keys) {
+    const a = previous[key];
+    const b = next[key];
+    if (JSON.stringify(a) !== JSON.stringify(b) && b !== undefined) {
+      changed.push(String(key));
+    }
+  }
+  return changed;
+}
+
 export const INTAKE_STORAGE_KEY = "health-intake-summary";
 export const TRANSCRIPT_STORAGE_KEY = "health-intake-transcript";
+export const RECORDING_STORAGE_KEY = "health-intake-recording";
+export const SESSION_META_KEY = "health-intake-meta";
+export const TRIAGE_REASON_KEY = "health-intake-triage-reason";

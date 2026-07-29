@@ -16,19 +16,34 @@ import {
 } from "@/lib/audio-utils";
 import { createLiveConnectConfig } from "@/lib/live-config";
 import {
+  changedSummaryKeys,
   COMPLETE_INTAKE,
   emptyIntakeSummary,
+  hasRequiredFields,
   INTAKE_STORAGE_KEY,
   mergeIntakeSummary,
+  RECORDING_STORAGE_KEY,
+  SESSION_META_KEY,
+  SET_TRIAGE_LEVEL,
   TRANSCRIPT_STORAGE_KEY,
+  TRIAGE_REASON_KEY,
   UPDATE_INTAKE_SUMMARY,
   type IntakeSummary,
+  type TriageLevel,
 } from "@/lib/intake-schema";
+import type { SessionOptions } from "@/lib/session-options";
+import {
+  appendRecordingEvent,
+  createRecording,
+  type RecordingEvent,
+  type SessionRecording,
+} from "@/lib/session-recording";
 
 export type SessionStatus =
   | "idle"
   | "preparing"
   | "connecting"
+  | "ready"
   | "live"
   | "complete"
   | "error";
@@ -39,6 +54,8 @@ type TokenPayload = {
   voiceName: string;
 };
 
+const VIDEO_INTERVAL_MS = 1100;
+
 export function useLiveIntake(onComplete?: () => void) {
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [summary, setSummary] = useState<IntakeSummary>(emptyIntakeSummary);
@@ -46,9 +63,17 @@ export function useLiveIntake(onComplete?: () => void) {
   const [inputLevel, setInputLevel] = useState(0);
   const [outputLevel, setOutputLevel] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pulsedFields, setPulsedFields] = useState<string[]>([]);
+  const [triageReason, setTriageReason] = useState<string | null>(null);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraPromptOpen, setCameraPromptOpen] = useState(false);
+  const [recording, setRecording] = useState<SessionRecording | null>(null);
 
   const sessionRef = useRef<Session | undefined>(undefined);
   const streamRef = useRef<MediaStream | undefined>(undefined);
+  const videoStreamRef = useRef<MediaStream | undefined>(undefined);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
+  const videoTimerRef = useRef<number | null>(null);
   const captureContextRef = useRef<AudioContext | undefined>(undefined);
   const playbackContextRef = useRef<AudioContext | undefined>(undefined);
   const playbackGainRef = useRef<GainNode | undefined>(undefined);
@@ -58,15 +83,45 @@ export function useLiveIntake(onComplete?: () => void) {
   );
   const playbackCursorRef = useRef(0);
   const isActiveRef = useRef(false);
-  const modelRef = useRef("");
+  const conversationStartedRef = useRef(false);
   const voiceNameRef = useRef("Aoede");
+  const optionsRef = useRef<SessionOptions>({
+    language: "en",
+    specialty: "general",
+  });
   const userTranscriptRef = useRef("");
   const modelTranscriptRef = useRef("");
+  const recordingRef = useRef<SessionRecording | null>(null);
+  const pulseTimerRef = useRef<number | null>(null);
 
   const persistState = useCallback(
     (nextSummary: IntakeSummary, lines: string[]) => {
       sessionStorage.setItem(INTAKE_STORAGE_KEY, JSON.stringify(nextSummary));
       sessionStorage.setItem(TRANSCRIPT_STORAGE_KEY, lines.join("\n"));
+      if (recordingRef.current) {
+        sessionStorage.setItem(
+          RECORDING_STORAGE_KEY,
+          JSON.stringify(recordingRef.current)
+        );
+      }
+    },
+    []
+  );
+
+  const pushRecording = useCallback(
+    (event: RecordingEvent | Omit<RecordingEvent, "t">) => {
+      if (!recordingRef.current) return;
+      const withTime =
+        "t" in event && typeof event.t === "number"
+          ? (event as RecordingEvent)
+          : ({
+              ...event,
+              t: Date.now() - recordingRef.current.startedAt,
+            } as RecordingEvent);
+      const next = appendRecordingEvent(recordingRef.current, withTime);
+      recordingRef.current = next;
+      setRecording(next);
+      sessionStorage.setItem(RECORDING_STORAGE_KEY, JSON.stringify(next));
     },
     []
   );
@@ -76,6 +131,13 @@ export function useLiveIntake(onComplete?: () => void) {
   summaryRef.current = summary;
   transcriptRef.current = transcript;
 
+  const pulseFields = useCallback((keys: string[]) => {
+    if (!keys.length) return;
+    setPulsedFields(keys);
+    if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
+    pulseTimerRef.current = window.setTimeout(() => setPulsedFields([]), 1600);
+  }, []);
+
   const appendTranscript = useCallback(
     (role: "user" | "assistant" | "system", text: string) => {
       setTranscript((prev) => {
@@ -83,13 +145,30 @@ export function useLiveIntake(onComplete?: () => void) {
         persistState(summaryRef.current, next);
         return next;
       });
+      pushRecording({ type: "transcript", role, text });
     },
-    [persistState]
+    [persistState, pushRecording]
   );
+
+  const stopCamera = useCallback(() => {
+    if (videoTimerRef.current) {
+      window.clearInterval(videoTimerRef.current);
+      videoTimerRef.current = null;
+    }
+    if (videoStreamRef.current) {
+      for (const track of videoStreamRef.current.getTracks()) track.stop();
+    }
+    videoStreamRef.current = undefined;
+    if (videoElRef.current) {
+      videoElRef.current.srcObject = null;
+    }
+    setCameraEnabled(false);
+  }, []);
 
   const cleanupAudio = useCallback(async () => {
     setInputLevel(0);
     setOutputLevel(0);
+    stopCamera();
 
     captureWorkletRef.current?.port.close();
     captureWorkletRef.current?.disconnect();
@@ -114,7 +193,7 @@ export function useLiveIntake(onComplete?: () => void) {
     }
     playbackContextRef.current = undefined;
     playbackGainRef.current = undefined;
-  }, []);
+  }, [stopCamera]);
 
   const closeSession = useCallback((session?: Session) => {
     if (!session) return;
@@ -202,7 +281,9 @@ export function useLiveIntake(onComplete?: () => void) {
       setInputLevel(calculateLevel(new Int16Array(pcmBuffer)));
 
       const session = sessionRef.current;
-      if (!session || !isActiveRef.current) return;
+      if (!session || !isActiveRef.current || !conversationStartedRef.current) {
+        return;
+      }
 
       session.sendRealtimeInput({
         audio: {
@@ -214,6 +295,65 @@ export function useLiveIntake(onComplete?: () => void) {
 
     captureSourceRef.current.connect(captureWorkletRef.current);
   }, []);
+
+  const sendVideoFrame = useCallback(() => {
+    const session = sessionRef.current;
+    const video = videoElRef.current;
+    if (!session || !video || !conversationStartedRef.current) return;
+    if (video.videoWidth < 16 || video.videoHeight < 16) return;
+
+    const canvas = document.createElement("canvas");
+    const maxSide = 768;
+    const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.max(16, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(16, Math.round(video.videoHeight * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+    const base64 = dataUrl.split(",")[1];
+    if (!base64) return;
+
+    session.sendRealtimeInput({
+      video: {
+        data: base64,
+        mimeType: "image/jpeg",
+      },
+    });
+  }, []);
+
+  const enableCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      videoStreamRef.current = stream;
+      if (videoElRef.current) {
+        videoElRef.current.srcObject = stream;
+        await videoElRef.current.play().catch(() => undefined);
+      }
+      setCameraEnabled(true);
+      setCameraPromptOpen(false);
+      appendTranscript(
+        "system",
+        "Camera sharing on. Point at a medication label or skin area if you want."
+      );
+      if (videoTimerRef.current) window.clearInterval(videoTimerRef.current);
+      videoTimerRef.current = window.setInterval(sendVideoFrame, VIDEO_INTERVAL_MS);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not access the camera."
+      );
+      setCameraPromptOpen(false);
+    }
+  }, [appendTranscript, sendVideoFrame]);
 
   const handleToolCall = useCallback(
     async (functionCall: FunctionCall) => {
@@ -227,16 +367,48 @@ export function useLiveIntake(onComplete?: () => void) {
       if (name === UPDATE_INTAKE_SUMMARY) {
         setSummary((prev) => {
           const merged = mergeIntakeSummary(prev, args as IntakeSummary);
+          const changed = changedSummaryKeys(prev, merged);
+          pulseFields(changed);
           persistState(merged, transcriptRef.current);
+          pushRecording({ type: "fields", keys: changed, summary: merged });
           return merged;
         });
         response = { updated: true };
+      } else if (name === SET_TRIAGE_LEVEL) {
+        const level = args.level as TriageLevel;
+        const reason =
+          typeof args.reason === "string" ? args.reason : undefined;
+        if (level === "routine" || level === "soon" || level === "urgent") {
+          setTriageReason(reason ?? null);
+          if (reason) sessionStorage.setItem(TRIAGE_REASON_KEY, reason);
+          else sessionStorage.removeItem(TRIAGE_REASON_KEY);
+          setSummary((prev) => {
+            const merged = { ...prev, triage_level: level };
+            pulseFields(["triage_level"]);
+            persistState(merged, transcriptRef.current);
+            return merged;
+          });
+          pushRecording({ type: "triage", level, reason });
+          response = { level, saved: true };
+        } else {
+          response = { error: "Invalid triage level" };
+        }
       } else if (name === COMPLETE_INTAKE && args.ready === true) {
-        setStatus("complete");
-        isActiveRef.current = false;
-        response = { ready: true };
-        appendTranscript("system", "Intake marked complete.");
-        onComplete?.();
+        if (!hasRequiredFields(summaryRef.current)) {
+          response = {
+            ready: false,
+            error:
+              "Still missing chief complaint, duration, or severity. Keep asking.",
+          };
+        } else {
+          setStatus("complete");
+          isActiveRef.current = false;
+          conversationStartedRef.current = false;
+          response = { ready: true };
+          appendTranscript("system", "Intake marked complete.");
+          pushRecording({ type: "complete" });
+          onComplete?.();
+        }
       }
 
       await session.sendToolResponse({
@@ -249,7 +421,7 @@ export function useLiveIntake(onComplete?: () => void) {
         ],
       });
     },
-    [appendTranscript, onComplete, persistState]
+    [appendTranscript, onComplete, persistState, pulseFields, pushRecording]
   );
 
   const handleLiveMessage = useCallback(
@@ -312,100 +484,160 @@ export function useLiveIntake(onComplete?: () => void) {
 
   const stopSession = useCallback(async () => {
     isActiveRef.current = false;
+    conversationStartedRef.current = false;
     closeSession(sessionRef.current);
     sessionRef.current = undefined;
     await cleanupAudio();
     setStatus("idle");
+    setCameraPromptOpen(false);
   }, [cleanupAudio, closeSession]);
 
-  const startSession = useCallback(async () => {
-    setErrorMessage(null);
-    setStatus("preparing");
-    setSummary(emptyIntakeSummary());
-    setTranscript([]);
-    sessionStorage.removeItem(INTAKE_STORAGE_KEY);
-    sessionStorage.removeItem(TRANSCRIPT_STORAGE_KEY);
+  const beginConversation = useCallback(async () => {
+    const session = sessionRef.current;
+    if (!session || status !== "ready") return;
+
+    conversationStartedRef.current = true;
+    setStatus("live");
+    startCapture();
 
     try {
-      await setupAudio();
-
-      setStatus("connecting");
-      const tokenResponse = await fetch("/api/live-token", { method: "POST" });
-      const tokenPayload = await tokenResponse.json();
-      if (!tokenResponse.ok) {
-        throw new Error(
-          tokenPayload.detail || tokenPayload.error || "Could not create token"
-        );
-      }
-
-      const { token, model, voiceName } = tokenPayload as TokenPayload;
-      modelRef.current = model;
-      voiceNameRef.current = voiceName;
-
-      const ai = new GoogleGenAI({
-        apiKey: token,
-        httpOptions: { apiVersion: "v1alpha" },
+      await session.sendClientContent({
+        turns: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: "I am ready. Please greet me briefly and ask what brought me in today. Keep this as a live conversation until the intake is complete.",
+              },
+            ],
+          },
+        ],
+        turnComplete: true,
       });
-
-      let setupComplete = false;
-      const activate = () => {
-        if (setupComplete && sessionRef.current && isActiveRef.current) {
-          setStatus("live");
-          startCapture();
-          appendTranscript("system", "Session connected. Describe your symptoms.");
-        }
-      };
-
-      const session = await ai.live.connect({
-        model,
-        config: createLiveConnectConfig(voiceName),
-        callbacks: {
-          onopen: () => {
-            isActiveRef.current = true;
-          },
-          onmessage: (message) => {
-            handleLiveMessage(message, () => {
-              setupComplete = true;
-              activate();
-            });
-          },
-          onerror: (event) => {
-            setErrorMessage(event.message || "Gemini Live session error.");
-            setStatus("error");
-            void stopSession();
-          },
-          onclose: () => {
-            if (isActiveRef.current) {
-              isActiveRef.current = false;
-              setStatus((s) => (s === "complete" ? "complete" : "idle"));
-            }
-          },
-        },
-      });
-
-      sessionRef.current = session;
-      activate();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start session"
-      );
-      setStatus("error");
-      await cleanupAudio();
+    } catch {
+      // Some Live builds accept realtime text instead; audio path still works.
     }
-  }, [
-    appendTranscript,
-    cleanupAudio,
-    handleLiveMessage,
-    setupAudio,
-    startCapture,
-    stopSession,
-  ]);
+
+    appendTranscript(
+      "system",
+      "Conversation started. Keep talking through the follow-ups."
+    );
+    window.setTimeout(() => setCameraPromptOpen(true), 4500);
+  }, [appendTranscript, startCapture, status]);
+
+  const startSession = useCallback(
+    async (options: SessionOptions) => {
+      setErrorMessage(null);
+      setStatus("preparing");
+      setSummary(emptyIntakeSummary());
+      setTranscript([]);
+      setPulsedFields([]);
+      setTriageReason(null);
+      setCameraPromptOpen(false);
+      optionsRef.current = options;
+      conversationStartedRef.current = false;
+
+      const freshRecording = createRecording(options);
+      recordingRef.current = freshRecording;
+      setRecording(freshRecording);
+
+      sessionStorage.removeItem(INTAKE_STORAGE_KEY);
+      sessionStorage.removeItem(TRANSCRIPT_STORAGE_KEY);
+      sessionStorage.removeItem(TRIAGE_REASON_KEY);
+      sessionStorage.setItem(RECORDING_STORAGE_KEY, JSON.stringify(freshRecording));
+      sessionStorage.setItem(SESSION_META_KEY, JSON.stringify(options));
+
+      try {
+        await setupAudio();
+
+        setStatus("connecting");
+        const tokenResponse = await fetch("/api/live-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(options),
+        });
+        const tokenPayload = await tokenResponse.json();
+        if (!tokenResponse.ok) {
+          throw new Error(
+            tokenPayload.detail || tokenPayload.error || "Could not create token"
+          );
+        }
+
+        const { token, model, voiceName } = tokenPayload as TokenPayload;
+        voiceNameRef.current = voiceName;
+
+        const ai = new GoogleGenAI({
+          apiKey: token,
+          httpOptions: { apiVersion: "v1alpha" },
+        });
+
+        let setupComplete = false;
+        const activate = () => {
+          if (setupComplete && sessionRef.current && isActiveRef.current) {
+            setStatus("ready");
+            appendTranscript(
+              "system",
+              "Connected. Tap I'm ready to speak to begin the live intake."
+            );
+          }
+        };
+
+        const session = await ai.live.connect({
+          model,
+          config: createLiveConnectConfig(voiceName, options),
+          callbacks: {
+            onopen: () => {
+              isActiveRef.current = true;
+            },
+            onmessage: (message) => {
+              handleLiveMessage(message, () => {
+                setupComplete = true;
+                activate();
+              });
+            },
+            onerror: (event) => {
+              setErrorMessage(event.message || "Gemini Live session error.");
+              setStatus("error");
+              void stopSession();
+            },
+            onclose: () => {
+              if (isActiveRef.current) {
+                isActiveRef.current = false;
+                setStatus((s) => (s === "complete" ? "complete" : "idle"));
+              }
+            },
+          },
+        });
+
+        sessionRef.current = session;
+        activate();
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Failed to start session"
+        );
+        setStatus("error");
+        await cleanupAudio();
+      }
+    },
+    [
+      appendTranscript,
+      cleanupAudio,
+      handleLiveMessage,
+      setupAudio,
+      stopSession,
+    ]
+  );
 
   useEffect(() => {
     return () => {
+      if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
       void stopSession();
     };
   }, [stopSession]);
+
+  const canEndIntake =
+    status === "complete" ||
+    (status === "live" && hasRequiredFields(summary) && Boolean(summary.triage_level));
 
   return {
     status,
@@ -414,7 +646,18 @@ export function useLiveIntake(onComplete?: () => void) {
     inputLevel,
     outputLevel,
     errorMessage,
+    pulsedFields,
+    triageReason,
+    cameraEnabled,
+    cameraPromptOpen,
+    recording,
+    videoElRef,
+    canEndIntake,
     startSession,
+    beginConversation,
+    enableCamera,
+    declineCamera: () => setCameraPromptOpen(false),
+    stopCamera,
     stopSession,
   };
 }

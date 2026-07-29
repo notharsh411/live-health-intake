@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-07-29 (evening features)
+
+- Camera / document grounding: optional prompt to share medication or skin area (~1 fps JPEG)
+- Demo wows: live field pulses on tool updates; `/replay` reviewer session recording
+- Product depth: English / Hindi / Hinglish + General / ENT / Cardio / Peds templates
+- Triage: `set_triage_level` tool with routine / soon / urgent badge on summary
+- UX fix: "I'm ready to speak" gate; Finish locked until `complete_intake`
+
+## 2026-07-29 (later)
+
+- Requirements audit: all "What We Need To See" checklist items met
+- Added V2 story homepage with V1 fallback; mobile hardening; anchor docs
+- Confirmed remote demo path: Vercel URL works without local clone or local API key
+- Earlier: Live intake, tool calling, handoff export, GitHub + Vercel, env secrets on Vercel
+
 ## 2026-07-29
 
 - Added anchor docs: `docs/context.md`, `docs/project-overview.md`, `docs/changelog.md`

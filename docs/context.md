@@ -1,6 +1,6 @@
 # Context (attach this to new chats)
 
-Last updated: 2026-07-29
+Last updated: 2026-07-29 (evening)
 
 ## What this project is
 
@@ -20,8 +20,24 @@ Live Health Intake Assistant for NSOffice.AI internship. Voice symptom intake vi
 | `/v1` | **V1 homepage** (original simple hero). Fallback if V2 regresses. |
 | `/intake` | Live voice session + live summary card |
 | `/handoff` | Clinician note + copy/download |
+| `/replay` | Reviewer replay of last session recording (no mic) |
 | `/api/live-token` | Server mints ephemeral Gemini Live token (API key never in browser) |
 | `/api/summary/export` | Optional note polish via `gemini-3-flash-preview` |
+
+## Session UX (important)
+
+1. Pick **language** (English / Hindi / Hinglish) and **specialty** (General / ENT / Cardio / Peds)
+2. **Connect session**
+3. Tap **I'm ready to speak** to begin (mic stays muted until then)
+4. Optional camera prompt: share medication / skin / document
+5. **Finish stays locked** until the model calls `complete_intake`
+6. Summary shows **live field pulses** + **triage badge** (`routine` / `soon` / `urgent`)
+
+## Tools the model can call
+
+- `update_intake_summary`
+- `set_triage_level`
+- `complete_intake` (gated on chief complaint, duration, severity)
 
 ## Non-negotiables
 
@@ -29,20 +45,8 @@ Live Health Intake Assistant for NSOffice.AI internship. Voice symptom intake vi
 - Secrets only in `.env.local` (gitignored) and Vercel env. Never commit keys.
 - Phone users open the Vercel URL only. No local repo or local API key required; mic + HTTPS required.
 
-## Active work / latest decisions
-
-- Homepage **V2** is default on `/` (problem narrative + product showcase)
-- Homepage **V1** preserved at `/v1` for fallback
-- Anchor docs live in `docs/` and must be updated after each meaningful change
-- Global skills: `~/.cursor/skills` → `~/.agents/skills`
-- Remote phone/desktop users only need the Vercel URL + mic; API key is on Vercel
-
 ## Attach in a new chat
-
-Prefer attaching:
 
 1. `docs/context.md` (this file)
 2. `docs/project-overview.md`
-3. `docs/changelog.md` (recent slice)
-
-Then say: "Continue from these anchors."
+3. `docs/changelog.md`

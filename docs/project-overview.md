@@ -10,7 +10,7 @@ Clinic visits often start cold. Patients fill paper or portal forms that miss nu
 
 ## Solution
 
-The patient speaks. Gemini Live asks one clarifying question at a time, updates a structured intake summary via `update_intake_summary` while they talk, then hands off a clinician-ready note.
+The patient speaks. Gemini Live asks one clarifying question at a time, updates a structured intake summary via `update_intake_summary` while they talk, sets a triage badge via `set_triage_level`, optionally grounds on camera frames, then hands off a clinician-ready note.
 
 ## Why this idea (assignment)
 

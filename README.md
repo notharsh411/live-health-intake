@@ -17,6 +17,11 @@ Phone or any browser: open the live demo URL over HTTPS, allow the microphone, a
 
 - Live audio conversation with `gemini-3.1-flash-live-preview` (listen, speak, barge-in)
 - `update_intake_summary` tool calls fill the summary panel while the patient talks
+- `set_triage_level` tool shows a routine / soon / urgent badge for clinicians
+- Optional camera grounding for medication labels or skin findings (user opt-in)
+- Language modes (English, Hindi, Hinglish) and specialty templates (General, ENT, Cardio, Peds)
+- Live field pulses + reviewer replay at `/replay`
+- Conversation start gate and locked finish until the assistant completes follow-ups
 - Optional clinician note polish with `gemini-3-flash-preview`
 - NSOffice Glass UI: Electric Blue, DM Sans, aurora + liquid glass Decision Bar
 - API key stays on the server; the browser receives a short-lived ephemeral token
