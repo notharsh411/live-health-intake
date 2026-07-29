@@ -62,8 +62,42 @@ type TokenPayload = {
 };
 
 const VIDEO_INTERVAL_MS = 1100;
+/** Give the patient time to aim before any frame is sent. */
+const FRAME_AIM_GRACE_MS = 2200;
 
 export type CameraFacing = "user" | "environment";
+
+/** Skip near-black / washed-out / flat frames that trigger hallucinated vision. */
+function isFrameUsefulForVision(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number
+): boolean {
+  const sample = Math.min(48, width, height);
+  const stepX = Math.max(1, Math.floor(width / sample));
+  const stepY = Math.max(1, Math.floor(height / sample));
+  const data = ctx.getImageData(0, 0, width, height).data;
+  let count = 0;
+  let sum = 0;
+  let sumSq = 0;
+
+  for (let y = 0; y < height; y += stepY) {
+    for (let x = 0; x < width; x += stepX) {
+      const i = (y * width + x) * 4;
+      const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      sum += lum;
+      sumSq += lum * lum;
+      count += 1;
+    }
+  }
+
+  if (count < 16) return false;
+  const mean = sum / count;
+  const variance = sumSq / count - mean * mean;
+  if (mean < 18 || mean > 245) return false;
+  if (variance < 90) return false;
+  return true;
+}
 
 function hasSavedSummary(): boolean {
   try {
@@ -97,6 +131,7 @@ export function useLiveIntake(onComplete?: () => void) {
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const videoTimerRef = useRef<number | null>(null);
   const framesStreamingRef = useRef(false);
+  const frameArmedAtRef = useRef(0);
   const cameraFacingRef = useRef<CameraFacing>("environment");
   const captureContextRef = useRef<AudioContext | undefined>(undefined);
   const playbackContextRef = useRef<AudioContext | undefined>(undefined);
@@ -184,6 +219,7 @@ export function useLiveIntake(onComplete?: () => void) {
     }
     framesStreamingRef.current = false;
     setFramesStreaming(false);
+    frameArmedAtRef.current = 0;
     if (videoStreamRef.current) {
       for (const track of videoStreamRef.current.getTracks()) track.stop();
     }
@@ -352,6 +388,7 @@ export function useLiveIntake(onComplete?: () => void) {
     const video = videoElRef.current;
     if (!session || !video || !conversationStartedRef.current) return;
     if (!framesStreamingRef.current) return;
+    if (Date.now() < frameArmedAtRef.current) return;
     if (video.videoWidth < 16 || video.videoHeight < 16) return;
 
     const canvas = document.createElement("canvas");
@@ -359,9 +396,11 @@ export function useLiveIntake(onComplete?: () => void) {
     const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
     canvas.width = Math.max(16, Math.round(video.videoWidth * scale));
     canvas.height = Math.max(16, Math.round(video.videoHeight * scale));
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (!isFrameUsefulForVision(ctx, canvas.width, canvas.height)) return;
+
     const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
     const base64 = dataUrl.split(",")[1];
     if (!base64) return;
@@ -389,10 +428,12 @@ export function useLiveIntake(onComplete?: () => void) {
       setCameraPromptOpen(false);
       framesStreamingRef.current = false;
       setFramesStreaming(false);
+      frameArmedAtRef.current = 0;
       appendTranscript(
         "system",
-        "Camera preview on. Frames are not shared yet — point at the item, then tap “I’m showing it now”."
+        "Camera preview on. Frames are not shared yet — aim at the item, then tap “I’m showing it now”."
       );
+      // Timer may run, but framesStreamingRef stays false until armed.
       ensureFrameTimer();
     } catch (error) {
       setErrorMessage(
@@ -408,28 +449,15 @@ export function useLiveIntake(onComplete?: () => void) {
     if (!cameraEnabled || !videoStreamRef.current) return;
     framesStreamingRef.current = true;
     setFramesStreaming(true);
+    // Aim grace: do not send frames (or vision-priming text) immediately.
+    frameArmedAtRef.current = Date.now() + FRAME_AIM_GRACE_MS;
     ensureFrameTimer();
     appendTranscript(
       "system",
-      "Now sharing camera frames with the assistant (~1 per second)."
+      "Sharing will start in a couple of seconds. Hold the label, skin area, or document steady and fill the frame."
     );
-    const session = sessionRef.current;
-    if (session && conversationStartedRef.current) {
-      try {
-        session.sendRealtimeInput({
-          text: "The patient is now deliberately showing something to the camera for clinical grounding. Ignore prior ambient preview. Only describe a medication label, skin finding, or document when clearly visible.",
-        });
-      } catch {
-        // Non-fatal: frames still stream.
-      }
-      window.setTimeout(() => sendVideoFrame(), 200);
-    }
-  }, [
-    appendTranscript,
-    cameraEnabled,
-    ensureFrameTimer,
-    sendVideoFrame,
-  ]);
+    // Intentionally no sendRealtimeInput text — that was priming false “I see a rash” turns.
+  }, [appendTranscript, cameraEnabled, ensureFrameTimer]);
 
   const switchCamera = useCallback(async () => {
     if (!cameraEnabled) return;

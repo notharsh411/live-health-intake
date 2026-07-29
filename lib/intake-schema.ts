@@ -40,7 +40,7 @@ export function hasRequiredFields(summary: IntakeSummary): boolean {
 export const updateIntakeSummaryDeclaration = {
   name: UPDATE_INTAKE_SUMMARY,
   description:
-    "Update the structured clinical intake summary with new facts learned from the conversation or from a shared camera/document view. Call this after each new piece of information. Only include fields that changed or were newly confirmed.",
+    "Update the structured clinical intake summary with new facts learned from the conversation or from a clear camera view. Call this after each new piece of information. Only include fields that changed or were newly confirmed. For visual_findings, only include unmistakable camera observations — never invent or copy spoken symptom text into visual_findings.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -92,7 +92,7 @@ export const updateIntakeSummaryDeclaration = {
       visual_findings: {
         type: Type.STRING,
         description:
-          "What you observe from a shared camera view (medication label, skin finding, document). Describe facts only.",
+          "Camera-only observations of a clear medication label, skin lesion/rash/wound, or document in frame. Never invent. Never copy spoken symptoms here. Omit this field unless the finding is unmistakable in the video.",
       },
     },
   },

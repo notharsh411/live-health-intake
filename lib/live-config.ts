@@ -29,7 +29,7 @@ export function createLiveConnectConfig(
       },
     },
     systemInstruction: buildSystemInstruction(options),
-    temperature: 0.8,
+    temperature: 0.55,
     mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
     tools: intakeTools,
     inputAudioTranscription: {},

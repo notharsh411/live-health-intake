@@ -315,8 +315,8 @@ export function LiveSessionPanel() {
             {cameraEnabled && (
               <p className="camera-caption">
                 {framesStreaming
-                  ? "Sharing ~1 frame per second. Hold labels steady. Use Flip camera if you need the other lens."
-                  : "Preview only — the assistant cannot see this yet. Aim at the med bottle, skin, or document, then tap I’m showing it now."}
+                  ? "Sharing soon — fill the frame with the label, skin area, or document. The assistant should stay quiet about vision until that is clear."
+                  : "Preview only — the assistant cannot see this yet. Aim first, then tap I’m showing it now."}
               </p>
             )}
           </div>

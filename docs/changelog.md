@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 (vision hallucination guard)
+
+- Removed vision-priming realtime text that caused false “I see a rash” turns
+- Aim grace (~2.2s) + skip low-contrast/empty frames before sending video
+- Hardened camera rules in system prompt and visual_findings tool; lower Live temperature
+
 ## 2026-07-29 (scroll motion)
 
 - NSOffice.AI-style scroll reveals for text and objects (`Reveal` / `RevealText`)
