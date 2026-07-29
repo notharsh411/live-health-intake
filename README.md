@@ -6,10 +6,12 @@ Real-time voice health intake built for the NSOffice.AI internship assignment. A
 
 ## Links
 
-- **Live demo:** [https://health-intake-eta.vercel.app](https://health-intake-eta.vercel.app)
+- **Live demo (no local install):** [https://health-intake-eta.vercel.app](https://health-intake-eta.vercel.app)
+- **Classic V1 homepage:** [https://health-intake-eta.vercel.app/v1](https://health-intake-eta.vercel.app/v1)
 - **GitHub:** [https://github.com/notharsh411/live-health-intake](https://github.com/notharsh411/live-health-intake)
+- **Anchor docs (for new chats):** [`docs/context.md`](docs/context.md), [`docs/project-overview.md`](docs/project-overview.md), [`docs/changelog.md`](docs/changelog.md)
 
-> Set `GEMINI_API_KEY` in the [Vercel project environment variables](https://vercel.com/harshbhatia618-gmailcoms-projects/health-intake/settings/environment-variables) so the live voice session can mint ephemeral tokens. Without it, the UI still loads but intake sessions fail.
+Phone or any browser: open the live demo URL over HTTPS, allow the microphone, and start intake. You do not need the repo, Node, or a local API key. The server holds `GEMINI_API_KEY` on Vercel.
 
 ## Features
 
