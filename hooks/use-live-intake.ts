@@ -540,7 +540,7 @@ export function useLiveIntake(onComplete?: () => void) {
   }, [persistState]);
 
   const finishIntake = useCallback(
-    async (source: "tool" | "manual") => {
+    async () => {
       if (finishingRef.current || statusRef.current === "complete") return;
       finishingRef.current = true;
 
@@ -551,12 +551,7 @@ export function useLiveIntake(onComplete?: () => void) {
       conversationStartedRef.current = false;
 
       persistState(summaryRef.current, transcriptRef.current);
-      appendTranscript(
-        "system",
-        source === "manual"
-          ? "Intake ended. Opening clinician handoff."
-          : "Intake marked complete."
-      );
+      appendTranscript("system", "Intake marked complete.");
       pushRecording({ type: "complete" });
 
       await releaseScreenWakeLock(wakeLockRef.current);
@@ -587,17 +582,6 @@ export function useLiveIntake(onComplete?: () => void) {
       pushRecording,
     ]
   );
-
-  const endIntakeManually = useCallback(async () => {
-    if (!hasRequiredFields(summaryRef.current)) {
-      setErrorMessage(
-        "Need chief complaint, duration, and severity (0–10) before ending."
-      );
-      return;
-    }
-    setErrorMessage(null);
-    await finishIntake("manual");
-  }, [finishIntake]);
 
   const handleToolCall = useCallback(
     async (functionCall: FunctionCall) => {
@@ -659,7 +643,7 @@ export function useLiveIntake(onComplete?: () => void) {
           } catch {
             // Socket may already be closing.
           }
-          await finishIntake("tool");
+          await finishIntake();
           return;
         }
       }
@@ -998,6 +982,5 @@ export function useLiveIntake(onComplete?: () => void) {
     declineCamera: () => setCameraPromptOpen(false),
     stopCamera,
     stopSession,
-    endIntakeManually,
   };
 }

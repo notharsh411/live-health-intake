@@ -13,7 +13,6 @@ import {
   type IntakeLanguage,
   type IntakeSpecialty,
 } from "@/lib/session-options";
-import { hasRequiredFields } from "@/lib/intake-schema";
 
 function statusLabel(status: SessionStatus) {
   switch (status) {
@@ -82,7 +81,6 @@ export function LiveSessionPanel() {
     switchCamera,
     declineCamera,
     stopCamera,
-    endIntakeManually,
   } = useLiveIntake(() => {
     // Soft navigation; hook also hard-assigns /handoff for mobile Safari.
     router.push("/handoff");
@@ -94,7 +92,6 @@ export function LiveSessionPanel() {
   const canConfigure =
     status === "idle" || status === "error" || status === "interrupted";
   const hasSummary = Object.keys(summary).length > 0;
-  const canEndManually = isLive && hasRequiredFields(summary);
 
   return (
     <div className="intake-layout">
@@ -188,7 +185,7 @@ export function LiveSessionPanel() {
             {isReady &&
               "Tap I'm ready to speak when you want to start. The assistant will keep asking follow-ups until the intake is complete."}
             {isLive &&
-              "Keep talking through the follow-ups. When chief complaint, duration, and severity are filled, you can end and open the clinician note."}
+              "Keep talking through the follow-ups. Finish stays locked until the assistant marks the intake complete."}
             {status === "complete" &&
               "All set. Opening the clinician handoff..."}
           </p>
@@ -217,23 +214,14 @@ export function LiveSessionPanel() {
                 I&apos;m ready to speak
               </button>
             )}
-            {isLive && !canEndManually && (
+            {isLive && (
               <button
                 type="button"
                 className="btn btn-ghost"
                 disabled
-                title="Unlocks after chief complaint, duration, and severity are captured"
+                title="The assistant will unlock finish when follow-ups are done"
               >
                 Follow-ups still open
-              </button>
-            )}
-            {canEndManually && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void endIntakeManually()}
-              >
-                End intake &amp; view note
               </button>
             )}
             {status === "complete" && (
