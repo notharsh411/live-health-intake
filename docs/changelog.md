@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-30 (mobile handoff)
+
+- Fix completion race that could mark the session interrupted before redirect on mobile
+- Hard-navigate to `/handoff` after complete (Safari-safe after Live audio teardown)
+- Manual **End intake & view note** when required fields are filled; summary stacks above session on phones
+
 ## 2026-07-29 (camera-off honesty)
 
 - Default vision state is OFF; model told it cannot see the patient (audio only)

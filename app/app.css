@@ -712,7 +712,14 @@ html {
   }
 
   .intake-summary-aside {
-    order: 2;
+    order: -1;
+  }
+
+  .session-actions .btn-primary {
+    position: sticky;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 5;
+    box-shadow: var(--shadow-float);
   }
 
   .handoff-page {

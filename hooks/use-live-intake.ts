@@ -155,6 +155,9 @@ export function useLiveIntake(onComplete?: () => void) {
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
   const statusRef = useRef<SessionStatus>("idle");
   statusRef.current = status;
+  const finishingRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const persistState = useCallback(
     (nextSummary: IntakeSummary, lines: string[]) => {
@@ -518,6 +521,84 @@ export function useLiveIntake(onComplete?: () => void) {
     }
   }, [appendTranscript, attachVideoStream, cameraEnabled, requestCameraStream]);
 
+  const goToHandoff = useCallback(() => {
+    persistState(summaryRef.current, transcriptRef.current);
+    // Soft nav can fail on mobile Safari after Live audio/WebSocket teardown.
+    window.setTimeout(() => {
+      try {
+        onCompleteRef.current?.();
+      } catch {
+        // Fall through to hard nav.
+      }
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/handoff")
+      ) {
+        window.location.assign("/handoff");
+      }
+    }, 450);
+  }, [persistState]);
+
+  const finishIntake = useCallback(
+    async (source: "tool" | "manual") => {
+      if (finishingRef.current || statusRef.current === "complete") return;
+      finishingRef.current = true;
+
+      // Sync before any onclose/onerror can race and markInterrupted.
+      statusRef.current = "complete";
+      setStatus("complete");
+      isActiveRef.current = false;
+      conversationStartedRef.current = false;
+
+      persistState(summaryRef.current, transcriptRef.current);
+      appendTranscript(
+        "system",
+        source === "manual"
+          ? "Intake ended. Opening clinician handoff."
+          : "Intake marked complete."
+      );
+      pushRecording({ type: "complete" });
+
+      await releaseScreenWakeLock(wakeLockRef.current);
+      wakeLockRef.current = null;
+
+      if (videoTimerRef.current) {
+        window.clearInterval(videoTimerRef.current);
+        videoTimerRef.current = null;
+      }
+      framesStreamingRef.current = false;
+      setFramesStreaming(false);
+
+      goToHandoff();
+
+      // Tear down media after navigation is scheduled so iOS doesn't cancel the route.
+      window.setTimeout(() => {
+        closeSession(sessionRef.current);
+        sessionRef.current = undefined;
+        void cleanupAudio();
+      }, 700);
+    },
+    [
+      appendTranscript,
+      cleanupAudio,
+      closeSession,
+      goToHandoff,
+      persistState,
+      pushRecording,
+    ]
+  );
+
+  const endIntakeManually = useCallback(async () => {
+    if (!hasRequiredFields(summaryRef.current)) {
+      setErrorMessage(
+        "Need chief complaint, duration, and severity (0–10) before ending."
+      );
+      return;
+    }
+    setErrorMessage(null);
+    await finishIntake("manual");
+  }, [finishIntake]);
+
   const handleToolCall = useCallback(
     async (functionCall: FunctionCall) => {
       const session = sessionRef.current;
@@ -564,29 +645,42 @@ export function useLiveIntake(onComplete?: () => void) {
               "Still missing chief complaint, duration, or severity. Keep asking.",
           };
         } else {
-          setStatus("complete");
-          isActiveRef.current = false;
-          conversationStartedRef.current = false;
-          void releaseScreenWakeLock(wakeLockRef.current);
-          wakeLockRef.current = null;
           response = { ready: true };
-          appendTranscript("system", "Intake marked complete.");
-          pushRecording({ type: "complete" });
-          onComplete?.();
+          try {
+            await session.sendToolResponse({
+              functionResponses: [
+                {
+                  id: functionCall.id,
+                  name,
+                  response,
+                },
+              ],
+            });
+          } catch {
+            // Socket may already be closing.
+          }
+          await finishIntake("tool");
+          return;
         }
       }
 
-      await session.sendToolResponse({
-        functionResponses: [
-          {
-            id: functionCall.id,
-            name,
-            response,
-          },
-        ],
-      });
+      if (statusRef.current === "complete") return;
+
+      try {
+        await session.sendToolResponse({
+          functionResponses: [
+            {
+              id: functionCall.id,
+              name,
+              response,
+            },
+          ],
+        });
+      } catch {
+        // Non-fatal if the socket already closed.
+      }
     },
-    [appendTranscript, onComplete, persistState, pulseFields, pushRecording]
+    [finishIntake, persistState, pulseFields, pushRecording]
   );
 
   const handleLiveMessage = useCallback(
@@ -660,6 +754,7 @@ export function useLiveIntake(onComplete?: () => void) {
   }, [cleanupAudio, closeSession]);
 
   const markInterrupted = useCallback(async (reason: string) => {
+    if (finishingRef.current || statusRef.current === "complete") return;
     isActiveRef.current = false;
     conversationStartedRef.current = false;
     await releaseScreenWakeLock(wakeLockRef.current);
@@ -729,6 +824,7 @@ export function useLiveIntake(onComplete?: () => void) {
       setCameraPromptOpen(false);
       optionsRef.current = options;
       conversationStartedRef.current = false;
+      finishingRef.current = false;
 
       const freshRecording = createRecording(options);
       recordingRef.current = freshRecording;
@@ -797,7 +893,9 @@ export function useLiveIntake(onComplete?: () => void) {
               );
             },
             onclose: () => {
-              if (statusRef.current === "complete") return;
+              if (finishingRef.current || statusRef.current === "complete") {
+                return;
+              }
               if (
                 conversationStartedRef.current ||
                 statusRef.current === "live" ||
@@ -900,5 +998,6 @@ export function useLiveIntake(onComplete?: () => void) {
     declineCamera: () => setCameraPromptOpen(false),
     stopCamera,
     stopSession,
+    endIntakeManually,
   };
 }
